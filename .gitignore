@@ -1,0 +1,20 @@
+# Models
+*.bin
+*.pt
+*.pth
+*.onnx
+*.safetensors
+models/
+checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
