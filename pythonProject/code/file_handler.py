@@ -24,20 +24,21 @@ class FileHandler:
         '.bmp': 'image',
     }
 
-    def detect_type(cls, filename: str) -> str:
+    def detect_type(self, filename: str) -> str:
         """检测文件类型"""
         ext = Path(filename).suffix.lower()
-        return cls.SUPPORTED_TYPES.get(ext, 'unknown')
+        return self.SUPPORTED_TYPES.get(ext, 'unknown')
 
-    def extract_content(self, knowledge_id, document_id, title, file_type, file_path):
-        if "pdf" in file_type:
+    def extract_content(self,file_path):
+        filetype=self.detect_type(file_path)
+        if "pdf" in filetype:
             pass
-        elif "word" in file_type:
+        elif "word" in filetype:
             pass
-        elif "image" in file_type:
+        elif "image" in filetype:
             self._extract_image(file_path)
 
-        print("提取完成", document_id, file_type, file_path)
+        print("提取完成",file_path)
 
     def _extract_text(file: BinaryIO) -> str:
         """提取纯文本"""
@@ -48,8 +49,8 @@ class FileHandler:
         # 可以调用现有的 chuck.py 或引入 PyPDF2/python-docx
         pass
 
-    def _extract_image(path) -> str:
+    def _extract_image(self,file_path) -> str:
         """OCR提取图片文字"""
         from paddleOcr import SimpleOcr
         simpleocr = SimpleOcr()
-        return simpleocr.recognize_img(path)
+        return simpleocr.recognize_img(file_path)

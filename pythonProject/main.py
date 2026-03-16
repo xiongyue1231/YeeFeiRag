@@ -60,7 +60,7 @@ async def add_document(
 
             # 文档内容解析，后台执行，后台提取数据
             background_tasks.add_task(
-                FileHandler().process_file(),  # 后台运行的函数名
+                FileHandler().extract_content(),  # 后台运行的函数名
                 knowledge_id=knowledge_id,
                 document_id=document_id,
                 title=title,
