@@ -14,5 +14,5 @@
 # for line in result[0]:
 #     print(f"文字: {line[1][0]}, 置信度: {line[1][1]:.2f}")
 
-import  torch
-print(torch.__version__)
+from modelscope import snapshot_download
+model_dir = snapshot_download('BAAI/bge-small-zh-v1.5',local_dir='./models/BAAI/bge-small-zh-v1.5')
