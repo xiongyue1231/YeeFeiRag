@@ -1,11 +1,12 @@
 
 database:
-  engine: "sqlite"
+  engine: "mysql+pymysql"
   path: "rag.db"
   host: "localhost"
   port: 3306
-  username: ""
-  password: ""
+  username: "yifei"
+  password: "111111"
+  mydb: "yeefeirag"
 
 
 device: "cuda" # "cpu"
