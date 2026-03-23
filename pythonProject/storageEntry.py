@@ -10,7 +10,7 @@ from paddleocr import PaddleOCR
 # client = MilvusClient(uri="tcp://localhost:19530")
 # print(client.get_server_version())
 
-path = '../imgtest/test.png'
+path = 'imgtest/test.png'
 simpleOcr = SimpleOcr()
 res = simpleOcr.recognize_img(path)
 print(res)

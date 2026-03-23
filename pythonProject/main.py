@@ -1,5 +1,4 @@
 from fastapi import FastAPI,UploadFile,File,Form,BackgroundTasks
-import uvicorn
 import time
 import datetime
 import uuid
@@ -11,7 +10,7 @@ from route_schemas import (
 from db_api import (
     KnowledgeDatabase,KnowledgeDocument,Session
 )
-from code.file_handler import FileHandler
+from pythonProject.file_handler import FileHandler
 app = FastAPI()
 
 

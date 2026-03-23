@@ -8,7 +8,7 @@ from paddleocr import PaddleOCR
 
 
 class SimpleOcr:
-    def __init__(self,lang='ch'):
+    def __init__(self, lang='ch'):
         self.lang = lang
         self.ocr = PaddleOCR(lang=self.lang,
                              use_textline_orientation=True,
@@ -29,5 +29,3 @@ class SimpleOcr:
                 confidence = line[1][1]  # 置信度
                 texts.append((text, confidence))
         return texts
-
-
