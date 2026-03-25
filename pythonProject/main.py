@@ -5,15 +5,101 @@ import uuid
 import traceback
 from typing_extensions import Annotated
 from route_schemas import (
-    DocumentResponse
+    DocumentResponse,KnowledgeRequest,KnowledgeResponse
 )
 from db_api import (
-    KnowledgeDatabase,KnowledgeDocument,Session
+    KnowledgeDatabase,KnowledgeDocument,Session,
 )
 from pythonProject.file_handler import FileHandler
 app = FastAPI()
 
 
+# 新增知识库
+@app.post("/v1/knowledge_base")
+def add_knowledge_base(req: KnowledgeRequest) -> KnowledgeResponse:
+    start_time = time.time()
+    try:
+        for retry_time in range(10):
+            with Session() as session:
+                record = KnowledgeDatabase(
+                    title=req.title,
+                    category=req.category,
+                    create_dt=datetime.datetime.now(),
+                    update_dt=datetime.datetime.now(),
+                )
+                session.add(record)
+                session.flush()  # Flushes changes to generate primary key if using autoincrement
+                knowledge_id = record.knowledge_id
+                session.commit()
+
+            return KnowledgeResponse(  # type: ignore
+                request_id=str(uuid.uuid4()),
+                knowledge_id=knowledge_id,
+                category=req.category,
+                title=req.title,
+                response_code=200,
+                response_msg="知识库插入成功",
+                process_status="completed",
+                processing_time=time.time() - start_time
+            )
+
+    except Exception as e:
+        print(traceback.format_exc())
+        # TODO 打印日志
+        pass
+
+    return KnowledgeResponse(  # type: ignore
+        request_id=str(uuid.uuid4()),
+        knowledge_id=0,
+        category="",
+        title="",
+        response_code=504,
+        response_msg="知识库插入失败",
+        process_status="completed",
+        processing_time=time.time() - start_time
+    )
+
+# 删除知识库
+@app.delete("/v1/knowledge_base")
+def delete_knowledge_base(knowledge_id: int, token: str) -> KnowledgeResponse:
+    start_time = time.time()
+
+    try:
+        for retry_time in range(10):
+            with Session() as session:
+                record = session.query(KnowledgeDatabase).filter(KnowledgeDatabase.knowledge_id == knowledge_id).first()
+                if record is None:
+                    break
+
+                session.delete(record)
+                session.commit()
+                return KnowledgeResponse(  # type: ignore
+                    request_id=str(uuid.uuid4()),
+                    knowledge_id=knowledge_id,
+                    category=str(record.category),
+                    title=str(record.title),
+                    response_code=200,
+                    response_msg="知识库删除成功",
+                    process_status="completed",
+                    processing_time=time.time() - start_time
+                )
+    except Exception as e:
+        # TODO 打印日志
+        pass
+
+    return KnowledgeResponse(  # type: ignore
+        request_id=str(uuid.uuid4()),
+        knowledge_id=knowledge_id,
+        category="",
+        title="",
+        response_code=404,
+        response_msg="知识库不存在",
+        process_status="completed",
+        processing_time=time.time() - start_time
+    )
+
+
+# 新增文档
 @app.post("/v1/document")
 async def add_document(
         knowledge_id: int = Annotated[str, Form()],
@@ -59,7 +145,7 @@ async def add_document(
 
             # 文档内容解析，后台执行，后台提取数据
             background_tasks.add_task(
-                FileHandler().extract_content(),  # 后台运行的函数名
+                FileHandler().extract_content(file_path),  # 后台运行的函数名
                 knowledge_id=knowledge_id,
                 document_id=document_id,
                 title=title,
@@ -95,3 +181,4 @@ async def add_document(
         process_status="completed",
         processing_time=time.time() - start_time
     )
+
