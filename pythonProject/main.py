@@ -27,6 +27,7 @@ async def add_document(
     try:
         for retry_time in range(10):
             # 上传的文档，记录在关系型数据库中， orm 添加记录
+            # 创建数据库连接
             with Session() as session:
                 record = session.query(KnowledgeDatabase).filter(KnowledgeDatabase.knowledge_id == knowledge_id).first()
                 if record is None:

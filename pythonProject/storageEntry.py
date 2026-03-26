@@ -10,13 +10,13 @@ from paddleocr import PaddleOCR
 # client = MilvusClient(uri="tcp://localhost:19530")
 # print(client.get_server_version())
 
-path = 'imgtest/test.png'
-simpleOcr = SimpleOcr()
-res = simpleOcr.recognize_img(path)
-print(res)
-chuck = Chuck()
-cleaned_data = chuck.clean_sentences(res, path)
-print(cleaned_data)
+# path = 'imgtest/test.png'
+# simpleOcr = SimpleOcr()
+# res = simpleOcr.recognize_img(path)
+# print(res)
+# chuck = Chuck()
+# cleaned_data = chuck.clean_sentences(res, path)
+# print(cleaned_data)
 # for i in enumerate(res):
 #     chuck=Chuck()
 #     # 小于20 直接入库

@@ -1,8 +1,11 @@
 from sentence_transformers import SentenceTransformer
+import yaml  # type: ignore
 
+with open("config.yaml", "r") as file:
+    config = yaml.safe_load(file)
 
 class VecEmbedding:
-    def __init__(self, model_path=None, device="cpu"):
+    def __init__(self, model_path=None, device=config["device"]):
         if model_path is None:
             model_path = 'models/BAAI/bge-small-zh-v1.5'
 

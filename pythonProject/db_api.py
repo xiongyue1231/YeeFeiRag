@@ -35,6 +35,7 @@ Base = declarative_base()
 # ORM
 # 定义 knowledge_database 表
 class KnowledgeDatabase(Base):
+    # SQLAlchemy 会自动生成表名
     __tablename__ = 'knowledge_database'
 
     knowledge_id = Column(Integer, primary_key=True, autoincrement=True,comment='知识库id')  # 主键，自动递增
@@ -58,7 +59,7 @@ class KnowledgeDocument(Base):
     __tablename__ = 'knowledge_document'
 
     document_id = Column(Integer, primary_key=True, autoincrement=True,comment="主键ID")  # 文档主键，自动递增
-    title = Column(String(255),comment="明档名称")  # 文档名称
+    title = Column(String(255),comment="文档名称")  # 文档名称
     category = Column(String(255),comment="文档类型")  # 文档类型
     knowledge_id = Column(Integer, ForeignKey('knowledge_database.knowledge_id'),comment="知识库id")  # 知识库主键（外键）
     file_path = Column(String(255),comment='文件存储地址')  # 储存地址
