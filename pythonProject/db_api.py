@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from datetime import datetime
-
+import pymysql
 import yaml  # type: ignore
 
 with open("config.yaml", "r") as file:
@@ -37,11 +37,11 @@ class KnowledgeDatabase(Base):
     # SQLAlchemy 会自动生成表名
     __tablename__ = 'knowledge_database'
 
-    knowledge_id = Column(Integer, primary_key=True, autoincrement=True,comment='知识库id')  # 主键，自动递增
-    title = Column(String(255),comment='知识库名称')  # 名称
-    category = Column(String(255),comment='知识库类型')  # 类型
-    create_dt = Column(DateTime, default=datetime.utcnow,comment='创建时间')  # 创建时间
-    update_dt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow,comment='更新时间')  # 更新时间
+    knowledge_id = Column(Integer, primary_key=True, autoincrement=True, comment='知识库id')  # 主键，自动递增
+    title = Column(String(255), comment='知识库名称')  # 名称
+    category = Column(String(255), comment='知识库类型')  # 类型
+    create_dt = Column(DateTime, default=datetime.utcnow, comment='创建时间')  # 创建时间
+    update_dt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='更新时间')  # 更新时间
 
     # 与 KnowledgeDocument 表的关系
     documents = relationship("KnowledgeDocument", back_populates="knowledge")
@@ -57,17 +57,18 @@ class KnowledgeDatabase(Base):
 class KnowledgeDocument(Base):
     __tablename__ = 'knowledge_document'
 
-    document_id = Column(Integer, primary_key=True, autoincrement=True,comment="主键ID")  # 文档主键，自动递增
-    title = Column(String(255),comment="文档名称")  # 文档名称
-    category = Column(String(255),comment="文档类型")  # 文档类型
-    knowledge_id = Column(Integer, ForeignKey('knowledge_database.knowledge_id'),comment="知识库id")  # 知识库主键（外键）
-    file_path = Column(String(255),comment='文件存储地址')  # 储存地址
-    file_type = Column(String(255),comment='数据类型')  # 数据类型
-    create_dt = Column(DateTime, default=datetime.utcnow,comment='创建时间')  # 创建时间
-    update_dt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow,comment='更新时间')  # 更新时间
+    document_id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")  # 文档主键，自动递增
+    title = Column(String(255), comment="文档名称")  # 文档名称
+    category = Column(String(255), comment="文档类型")  # 文档类型
+    knowledge_id = Column(Integer, ForeignKey('knowledge_database.knowledge_id'), comment="知识库id")  # 知识库主键（外键）
+    file_path = Column(String(255), comment='文件存储地址')  # 储存地址
+    file_type = Column(String(255), comment='数据类型')  # 数据类型
+    create_dt = Column(DateTime, default=datetime.utcnow, comment='创建时间')  # 创建时间
+    update_dt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='更新时间')  # 更新时间
 
     # 与 KnowledgeDatabase 表的关系
     knowledge = relationship("KnowledgeDatabase", back_populates="documents")
+
 
 # 自动创建表，如果不存在
 Base.metadata.create_all(engine)

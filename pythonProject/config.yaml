@@ -9,7 +9,7 @@ database:
   mydb: "yeefeirag"
 
 
-device: "cpu" # "cpu"
+device: "cuda" # "cpu"
 
 
 models:
