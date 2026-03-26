@@ -29,16 +29,17 @@ class FileHandler:
         ext = Path(filename).suffix.lower()
         return self.SUPPORTED_TYPES.get(ext, 'unknown')
 
-    def extract_content(self,file_path):
-        filetype=self.detect_type(file_path)
+    def extract_content(self, file_path):
+        filetype = self.detect_type(file_path)
         if "pdf" in filetype:
             pass
         elif "word" in filetype:
             pass
         elif "image" in filetype:
-            self._extract_image(file_path)
+            content = self._extract_image(file_path)
 
-        print("提取完成",file_path)
+        print("提取完成", file_path)
+        return content
 
     def _extract_text(file: BinaryIO) -> str:
         """提取纯文本"""
@@ -49,7 +50,7 @@ class FileHandler:
         # 可以调用现有的 chuck.py 或引入 PyPDF2/python-docx
         pass
 
-    def _extract_image(self,file_path) -> str:
+    def _extract_image(self, file_path) -> str:
         """OCR提取图片文字"""
         from paddleOcr import SimpleOcr
         simpleocr = SimpleOcr()

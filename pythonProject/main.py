@@ -1,17 +1,23 @@
-from fastapi import FastAPI,UploadFile,File,Form,BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
 import time
 import datetime
 import uuid
 import traceback
+import uvicorn
 from typing_extensions import Annotated
 from route_schemas import (
-    DocumentResponse,KnowledgeRequest,KnowledgeResponse
+    DocumentResponse, KnowledgeRequest, KnowledgeResponse
 )
 from db_api import (
-    KnowledgeDatabase,KnowledgeDocument,Session,
+    KnowledgeDatabase, KnowledgeDocument, Session,
 )
 from pythonProject.file_handler import FileHandler
+from processor import  DocumentProcessor
 app = FastAPI()
+import yaml
+
+with open("config.yaml", "r") as file:
+    config = yaml.safe_load(file)
 
 
 # 新增知识库
@@ -58,6 +64,7 @@ def add_knowledge_base(req: KnowledgeRequest) -> KnowledgeResponse:
         process_status="completed",
         processing_time=time.time() - start_time
     )
+
 
 # 删除知识库
 @app.delete("/v1/knowledge_base")
@@ -132,7 +139,6 @@ async def add_document(
                 session.add(record)
                 session.flush()  # Flushes changes to generate primary key if using autoincrement
                 document_id = record.document_id
-                record
                 session.commit()
 
                 # 存储数据到文件
@@ -146,7 +152,7 @@ async def add_document(
 
             # 文档内容解析，后台执行，后台提取数据
             background_tasks.add_task(
-                FileHandler().extract_content(file_path),  # 后台运行的函数名
+                DocumentProcessor().process_and_store(file_path),  # 后台运行的函数名
                 knowledge_id=knowledge_id,
                 document_id=document_id,
                 title=title,
@@ -183,3 +189,6 @@ async def add_document(
         processing_time=time.time() - start_time
     )
 
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=config["rag"]["port"])

@@ -5,6 +5,7 @@
 # pip install paddleocr==2.10.0
 import torch
 from paddleocr import PaddleOCR
+from chuck import Chuck
 
 
 class SimpleOcr:
@@ -28,4 +29,7 @@ class SimpleOcr:
                 text = line[1][0]  # 文字内容
                 confidence = line[1][1]  # 置信度
                 texts.append((text, confidence))
+
         return texts
+
+

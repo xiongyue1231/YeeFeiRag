@@ -4,6 +4,7 @@ import yaml  # type: ignore
 with open("config.yaml", "r") as file:
     config = yaml.safe_load(file)
 
+
 class VecEmbedding:
     def __init__(self, model_path=None, device=config["device"]):
         if model_path is None:
