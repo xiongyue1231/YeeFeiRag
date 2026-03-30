@@ -191,4 +191,4 @@ async def add_document(
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=config["rag"]["port"])
+    uvicorn.run(app, host="0.0.0.0", port=config["rag"]["port"], workers=1)
