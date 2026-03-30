@@ -1,6 +1,6 @@
 from paddleOcr import SimpleOcr
 from pymilvus import MilvusClient,DataType
-from chuck import Chuck
+from chuck import OCRChuck
 import google.protobuf
 from paddleocr import PaddleOCR
 from enum import Enum

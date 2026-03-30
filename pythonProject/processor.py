@@ -1,11 +1,11 @@
-from chuck import Chuck
+from chuck import OCRChuck
 from file_handler import FileHandler
 from milvus import MilvusStore
 from pathlib import Path
-from milvus import  ContentType
+from milvus import ContentType
+
 
 class DocumentProcessor:
-
     SUPPORTED_TYPES = {
         # 文本类
         '.txt': 'text',
@@ -52,6 +52,7 @@ class DocumentProcessor:
                 # , "chunks": len(chunks)
                 }
 
-if  __name__ == "__main__":
+
+if __name__ == "__main__":
     processor = DocumentProcessor()
     processor.process_and_store("./imgtest/test.png")

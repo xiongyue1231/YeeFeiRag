@@ -5,7 +5,6 @@
 # pip install paddleocr==2.10.0
 import torch
 from paddleocr import PaddleOCR
-from chuck import Chuck
 
 
 class SimpleOcr:
