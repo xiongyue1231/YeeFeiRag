@@ -17,7 +17,7 @@
 # from modelscope import snapshot_download
 # model_dir = snapshot_download('BAAI/bge-small-zh-v1.5',local_dir='./models/BAAI/bge-small-zh-v1.5')
 
-
+from embedding import VecEmbedding
 import re
 from typing import List, Dict, Tuple, Union
 import uuid
