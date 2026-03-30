@@ -141,7 +141,7 @@ async def add_document(
                 document_id = record.document_id
                 session.commit()
 
-                # 存储数据到文件
+                # 存储数据到文件    或者存储到oss中，比如阿里云 七牛，目前是保存到本地
                 file_path = f"upload_files/document_id_{document_id}_" + file.filename
                 with open(file_path, "wb") as buffer:
                     buffer.write(file.file.read())
@@ -191,4 +191,4 @@ async def add_document(
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=config["rag"]["port"])
+    uvicorn.run(app, host="0.0.0.0", port=config["rag"]["port"], workers=1)

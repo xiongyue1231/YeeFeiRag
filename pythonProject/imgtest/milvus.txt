@@ -1,0 +1,17 @@
+CLI 启动 + Python 连接
+
+# 1. 创建并激活 Conda 虚拟环境（推荐）
+conda create --name milvus_env python=3.10
+
+conda activate milvus_env
+
+# 2. 安装 Milvus Lite
+pip install milvus
+
+# 3. 启动 Milvus 服务器
+milvus-server --data D:\ProRJ\milvus_data
+
+
+采用的是milvus lite  windows本地部署方式
+单独创建了milvus  conda环境，环境中装了milvus（服务端），因为paddle底层和milvus有冲突包，所以单独创建的conda环境
+python中则是其他环境，pip install pymilvus 这个客户端包，直接connection链接

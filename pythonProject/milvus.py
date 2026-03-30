@@ -20,9 +20,9 @@ print(client.get_server_version())
 
 
 class ContentType(Enum):
-    word = "text_collection"  # 文档数据
+    test = "text_collection"  # 文档数据
     image = "image_collection"  # 图片 OCR
-    excel = "document_collection"  # 表格数据
+    document = "document_collection"  # 表格数据
 
 
 class MilvusStore:
