@@ -8,6 +8,10 @@ database:
   password: "111111"
   mydb: "yeefeirag"
 
+milvus:
+  dims: 768,
+  host: "localhost"
+  port: 3306
 
 device: "cpu" # "cpu"
 

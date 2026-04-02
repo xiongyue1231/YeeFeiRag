@@ -2,9 +2,8 @@ from chuck import OCRChuck
 from file_handler import FileHandler
 from milvus import MilvusStore
 from pathlib import Path
-from milvus import ContentType
+from milvus import CollectionType
 from content_type import ContentType
-
 
 class DocumentProcessor:
 
@@ -23,8 +22,8 @@ class DocumentProcessor:
         data = self.chuck_handler.clean_sentences(content, file_path, filetype)
 
         # 创建milvus表
-        self.store_to_milvus.init_collection(ContentType().SUPPORTED_TYPES[filetype])
-        self.store_to_milvus.set_collection(ContentType().SUPPORTED_TYPES[filetype])
+        self.store_to_milvus.init_collection(CollectionType[filetype])
+        self.store_to_milvus.set_collection(CollectionType[filetype])
         # 3. 入库（统一在这里处理）
         self.store_to_milvus.add_document(data)
 
@@ -35,5 +34,6 @@ class DocumentProcessor:
 
 if __name__ == "__main__":
     processor = DocumentProcessor()
-    processor.process_and_store("./imgtest/milvus.txt")
+    processor.process_and_store("./imgtest/生成式人工智能在企业信息管理中的应用与伦理挑战研究.docx")
+    # processor.process_and_store("./imgtest/milvus.txt")
     # processor.process_and_store("./imgtest/test.png")

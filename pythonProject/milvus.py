@@ -15,12 +15,12 @@ with open("config.yaml", "r") as file:
 # client = MilvusClient(uri="tcp://localhost:19530")
 # print(client.get_server_version())
 
-client = MilvusClient(host="localhost", port="19530")
+client = MilvusClient(host=config["milvus"]["host"], port=config["milvus"]["port"])
 print(client.get_server_version())
 
 
-class ContentType(Enum):
-    test = "text_collection"  # 文档数据
+class CollectionType(Enum):
+    text = "text_collection"  # 文档数据
     image = "image_collection"  # 图片 OCR
     document = "document_collection"  # 表格数据
 
@@ -30,7 +30,7 @@ class MilvusStore:
         self.client = MilvusClient(host="localhost", port="19530")
         self.activate_collection = None
 
-    def init_collection(self, content_type: ContentType):
+    def init_collection(self, content_type: CollectionType):
         collection_name = content_type.value
 
         if self.client.has_collection(collection_name):
@@ -51,13 +51,21 @@ class MilvusStore:
         index_params = client.prepare_index_params()
 
         # 为 vector 字段创建索引
+        # index_params.add_index(
+        #     field_name="vector",  # 索引字段
+        #     index_type="IVF_FLAT",  # 索引类型
+        #     metric_type="IP",  # 度量类型（与 collection 一致）
+        #     params={"nlist": 128}  # 索引参数
+        # )
         index_params.add_index(
             field_name="vector",  # 索引字段
-            index_type="IVF_FLAT",  # 索引类型
+            index_type="HNSW",  # 索引类型
             metric_type="IP",  # 度量类型（与 collection 一致）
-            params={"nlist": 128}  # 索引参数
-        )
-
+            params={"M": 16,  # 推荐 16-32
+                    "efConstruction": 32  # 推荐 ≥ 2*M
+                   }  # 索引参数
+            )
+        # 创建表
         self.client.create_collection(collection_name,
                                       schema=schema,
                                       metric_type="IP",
@@ -65,12 +73,12 @@ class MilvusStore:
                                      )
         return collection_name
 
-    def set_collection(self, content_type: ContentType):
+    def set_collection(self, content_type: CollectionType):
         """切换当前操作的集合"""
         self.activate_collection = content_type.value
         print(f"切换到集合: {self.activate_collection}")
 
-    def add_document(self, data, content_type: ContentType = None):
+    def add_document(self, data, content_type: CollectionType = None):
         """添加文档到指定集合"""
         collection = content_type.value if content_type else self.activate_collection
 
@@ -78,4 +86,5 @@ class MilvusStore:
             raise ValueError("请指定 content_type 或先调用 set_collection()")
 
         self.client.insert(collection, data=data)
+        print(f"向集合 {collection} 添加了 {len(data)} 条数据")
         return collection
