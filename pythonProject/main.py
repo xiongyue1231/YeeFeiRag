@@ -6,14 +6,16 @@ import traceback
 import uvicorn
 from typing_extensions import Annotated
 from route_schemas import (
-    DocumentResponse, KnowledgeRequest, KnowledgeResponse
+    DocumentResponse, KnowledgeRequest, KnowledgeResponse,RAGRequest,RAGResponse
 )
 from db_api import (
     KnowledgeDatabase, KnowledgeDocument, Session,
 )
 from pythonProject.file_handler import FileHandler
-from processor import  DocumentProcessor
+from processor import DocumentProcessor
+from rag_api import Rag
 app = FastAPI()
+
 import yaml
 
 with open("config.yaml", "r") as file:
@@ -185,6 +187,21 @@ async def add_document(
         file_type="",
         response_code=404,
         response_msg=response_msg,
+        process_status="completed",
+        processing_time=time.time() - start_time
+    )
+
+
+@app.post("/chat")
+def chat(req: RAGRequest) -> RAGResponse:
+    start_time = time.time()
+    message = Rag().chat_with_rag(req.knowledge_id, req.message)
+
+    return RAGResponse(
+        request_id=str(uuid.uuid4()),
+        message=message,
+        response_code=200,
+        response_msg="ok",
         process_status="completed",
         processing_time=time.time() - start_time
     )

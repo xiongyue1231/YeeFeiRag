@@ -5,6 +5,8 @@ from pathlib import Path
 from milvus import CollectionType
 from content_type import ContentType
 
+
+# 类似于BLL
 class DocumentProcessor:
 
     def __init__(self):

@@ -10,10 +10,10 @@ from paddleocr import PaddleOCR
 class SimpleOcr:
     def __init__(self, lang='ch'):
         self.lang = lang
-        self.ocr = PaddleOCR(lang=self.lang,
-                             use_textline_orientation=True,
-                             # show_log=False,
-                             )
+        self.ocrtool = PaddleOCR(lang=self.lang,
+                                 use_textline_orientation=True,
+                                 # show_log=False,
+                                 )
 
     def recognize_img(self, image_path):
         """
@@ -21,7 +21,7 @@ class SimpleOcr:
         :param image_path: 图片路径
         :return: 识别结果列表 [(文字, 置信度), ...]
         """
-        result = self.ocr.ocr(image_path)
+        result = self.ocrtool.ocr(image_path)
         texts = []
         if result[0]:
             for line in result[0]:
@@ -30,5 +30,3 @@ class SimpleOcr:
                 texts.append((text, confidence))
 
         return texts
-
-
