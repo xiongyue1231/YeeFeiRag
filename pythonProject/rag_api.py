@@ -141,6 +141,7 @@ class Rag:
             messages: List[Dict],
     ):
         # 用户的第一次提问用rag
+        # 对用户提问进行改写
         if len(messages) == 1:
             query = messages[0]["content"]
             related_records = self.query_document(query, knowledge_id)  # 检索到相关的文档

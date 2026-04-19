@@ -1,6 +1,6 @@
 from chuck import OCRChuck
 from file_handler import FileHandler
-from milvus import MilvusStore
+from milvus import MilvusManager
 from pathlib import Path
 from milvus import CollectionType
 from content_type import ContentType
@@ -12,7 +12,7 @@ class DocumentProcessor:
     def __init__(self):
         self.file_handler = FileHandler()
         self.chuck_handler = OCRChuck()
-        self.store_to_milvus = MilvusStore()
+        self.store_to_milvus = MilvusManager()
 
     def process_and_store(self, file_path: str):
         # 1. 提取内容（包含OCR）

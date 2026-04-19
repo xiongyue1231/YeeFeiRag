@@ -30,3 +30,4 @@ class SimpleOcr:
                 texts.append((text, confidence))
 
         return texts
+
