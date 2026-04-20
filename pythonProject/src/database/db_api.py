@@ -3,7 +3,7 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from datetime import datetime
 import pymysql
 import yaml  # type: ignore
-from src.app_config.loder import ConfigLoader
+from ..app_config.loder import ConfigLoader
 
 config_manager = ConfigLoader()
 

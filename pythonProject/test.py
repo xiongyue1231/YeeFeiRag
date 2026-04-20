@@ -22,7 +22,7 @@
 from modelscope import snapshot_download
 model_dir = snapshot_download('BAAI/bge-reranker-base',local_dir='./models/BAAI/bge-reranker-base')
 
-from embedding import VecEmbedding
+from .src.embed.embedding import VecEmbedding
 import re
 from typing import List, Dict, Tuple, Union
 import uuid

@@ -6,16 +6,17 @@ import traceback
 import uvicorn
 from typing_extensions import Annotated
 from route_schemas import (
-    DocumentResponse, KnowledgeRequest, KnowledgeResponse,RAGRequest,RAGResponse
+    DocumentResponse, KnowledgeRequest, KnowledgeResponse, RAGRequest, RAGResponse
 )
-from db_api import (
+from .src.database.db_api import (
     KnowledgeDatabase, KnowledgeDocument, Session,
 )
-from pythonProject.file_handler import FileHandler
-from processor import DocumentProcessor
-from rag_api import Rag
+from .src.analysis.file_handler import FileHandler
+from .src.analysis.processor import DocumentProcessor
+from .src.rag.rag_api import Rag
+
 app = FastAPI()
-from src.app_config.loder import ConfigLoader
+from .src.app_config.loder import ConfigLoader
 
 config_manager = ConfigLoader()
 

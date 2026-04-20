@@ -4,10 +4,10 @@ import numpy as np
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from openai import OpenAI
-from embedding import VecEmbedding
-from milvus import MilvusManager
+from ..embed.embedding import VecEmbedding
+from ..database.milvus import MilvusManager
 import datetime
-from src.app_config.loder import ConfigLoader
+from ..app_config.loder import ConfigLoader
 
 config_manager = ConfigLoader()
 device = config_manager.config.deviceSettings.device

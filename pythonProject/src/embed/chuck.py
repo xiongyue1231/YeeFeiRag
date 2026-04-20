@@ -3,7 +3,8 @@ from typing import List, Dict
 import uuid
 from embedding import VecEmbedding
 import yaml
-from src.app_config.loder import ConfigLoader
+from ..app_config.loder import ConfigLoader
+
 
 config_manager = ConfigLoader()
 

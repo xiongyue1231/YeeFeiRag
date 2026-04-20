@@ -1,4 +1,4 @@
-# code/file_handler.py
+
 from pathlib import Path
 from typing import BinaryIO, Union
 import io

@@ -1,6 +1,6 @@
 from sentence_transformers import SentenceTransformer
 import yaml  # type: ignore
-from src.app_config.loder import ConfigLoader
+from ..app_config.loder import ConfigLoader
 
 config_manager = ConfigLoader()
 

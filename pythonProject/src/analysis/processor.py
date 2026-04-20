@@ -1,8 +1,8 @@
-from chuck import OCRChuck
+from ..embed.chuck import OCRChuck
 from file_handler import FileHandler
-from milvus import MilvusManager
+from ..database.milvus import MilvusManager
 from pathlib import Path
-from milvus import CollectionType
+from ..database.milvus import CollectionType
 from content_type import ContentType
 
 
