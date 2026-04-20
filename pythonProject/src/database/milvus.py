@@ -1,11 +1,11 @@
-from paddleOcr import SimpleOcr
+
 from pymilvus import MilvusClient, DataType
 import google.protobuf
 from paddleocr import PaddleOCR
 from enum import Enum
 import yaml
 from typing import List, Dict, Any
-from src.app_config.loder import ConfigLoader
+from ..app_config.loder import ConfigLoader
 
 config_manager = ConfigLoader()
 

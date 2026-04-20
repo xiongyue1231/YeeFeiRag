@@ -26,11 +26,13 @@ class DatabaseConfig(BaseModel):
 class RagConfig(BaseModel):
     llm_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     llm_api_key: str = "sk-cbf8dce472b74ddfbf3210f7d52dd758"
-    llm_model: str = "qwen-plus"
+    #llm_model: str = "qwen-plus"
 
     vllm_base: str = "http://localhost:8000/v1"
     vllm_api_key: str = "43aa6570992d01fab078e157e07b4f52.ocKHwNGxhIBrDZD4"
-    vllm_model: str = "models/Qwen/Qwen3.5-0.8B/"
+    #vllm_model: str = "models/Qwen/Qwen3.5-0.8B/"
+    temperature: float= 0.1
+    model: str = "qwen-plus"
 
     embedding_model: str = "bge-small-zh-v1.5"
     rerank_model: str = "bge-reranker-base"
@@ -41,11 +43,13 @@ class RagConfig(BaseModel):
     use_rerank: bool = False
     use_rrf: bool = True
     port: int = 6010
-    is_llm: bool = True
+    provider: str = "openai"
+
 
 class DeviceConfig(BaseModel):
     """设备配置"""
     device: str = "cpu"
+
 
 # ========== 第一层：单个模型配置 ==========
 
@@ -77,4 +81,3 @@ class AppConfig(BaseModel):
     rag: RagConfig
     deviceSettings: DeviceConfig
     models: ModelsConfig
-

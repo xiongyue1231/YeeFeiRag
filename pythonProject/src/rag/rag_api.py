@@ -8,22 +8,11 @@ from ..embed.embedding import VecEmbedding
 from ..database.milvus import MilvusManager
 import datetime
 from ..app_config.loder import ConfigLoader
+from ..core.utils import create_llm_client
+from ..prompts.templates import get_prompt_template
 
 config_manager = ConfigLoader()
 device = config_manager.config.deviceSettings.device
-
-EMBEDDING_MODEL_PARAMS: Dict[Any, Any] = {}
-
-BASIC_QA_TEMPLATE = '''现在的时间是{#TIME#}。你是一个专家，你擅长回答用户提问，帮我结合给定的资料，回答下面的问题。
-如果问题无法从资料中获得，或无法从资料中进行回答，请回答无法回答。如果提问不符合逻辑，请回答无法回答。
-如果问题可以从资料中获得，则请逐步回答。
-
-资料：
-{#RELATED_DOCUMENT#}
-
-
-问题：{#QUESTION#}
-'''
 
 
 def load_rerank_model(model_name: str, model_path: str) -> None:
@@ -41,10 +30,10 @@ def load_rerank_model(model_name: str, model_path: str) -> None:
         EMBEDDING_MODEL_PARAMS["rerank_model"].to()
 
 
-if  config_manager.config.rag.use_rerank:
+if config_manager.config.rag.use_rerank:
     model_name = config_manager.config.rag.rerank_model
     model_info = config_manager.config.models.rerank_model[model_name]
-    model_path =model_info.local_url
+    model_path = model_info.local_url
 
     print(f"Loading rerank model {model_name} from model_path...")
     load_rerank_model(model_name, model_path)
@@ -53,16 +42,13 @@ if  config_manager.config.rag.use_rerank:
 class Rag:
     def __init__(self):
         self.rerank_model = config_manager.config.rag.rerank_model
-        self.device = config_manager.config.deviceSettings.device
-        self.client = OpenAI(
-            api_key=config_manager.config.rag.llm_api_key if config_manager.config.rag.is_llm else config_manager.config.rag.vllm_api_key,
-            base_url=config_manager.config.rag.llm_base if config_manager.config.rag.is_llm else config_manager.config.rag.vllm_base
-        )
-        self.llm_model =config_manager.config.rag.llm_model if config_manager.config.rag.is_llm else config_manager.config.rag.vllm_model
+        self.device = config_manager.config.deviceSettings.device  # 设备cpu还是gpu
+        self.client = create_llm_client(config_manager.config.rag)
+        self.llm_model = config_manager.config.rag.model
         self.Vec = VecEmbedding()
-        self.use_rerank =config_manager.config.rag.use_rerank
+        self.use_rerank = config_manager.config.rag.use_rerank
         self.milvus = MilvusManager()
-        self.chunk_candidate =config_manager.config.rag.chunk_candidate
+        self.chunk_candidate = config_manager.config.rag.chunk_candidate
 
     def get_rank(self, text_pair) -> np.ndarray:
         """
@@ -73,8 +59,11 @@ class Rag:
         if self.rerank_model in ["bge-reranker-base"]:
             with torch.no_grad():
                 inputs = EMBEDDING_MODEL_PARAMS["rerank_tokenizer"](
-                    text_pair, padding=True, truncation=True,
-                    return_tensors='pt', max_length=512,
+                    text_pair,
+                    padding=True,  # 填充
+                    truncation=True,  # 截断
+                    return_tensors='pt',  # 转换为张量
+                    max_length=512,  # 最大长度
                 )
                 inputs = {key: value.to(self.device) for key, value in inputs.items()}
                 scores = EMBEDDING_MODEL_PARAMS["rerank_model"](**inputs, return_dict=True).logits.view(-1, ).float()
@@ -142,29 +131,37 @@ class Rag:
             messages: List[Dict],
     ):
         # 用户的第一次提问用rag
-        # 对用户提问进行改写
+
         if len(messages) == 1:
             query = messages[0]["content"]
+            # 对用户提问进行改写  目前使用大模型进行改写
+            query = self.client.chat(
+                [{"role": "system", "content": get_prompt_template("rewriter")["system"]},
+                 {"role": "user", "content": get_prompt_template("rewriter")["user"].replace("{original_input}", query)}],
+                top_p=0.9, temperature=0.5
+            ).content
             related_records = self.query_document(query, knowledge_id)  # 检索到相关的文档
             print(related_records)
             related_document = '\n'.join([x["chunk_content"][0] for x in related_records])
 
-            rag_query = BASIC_QA_TEMPLATE.replace("{#TIME#}", str(datetime.datetime.now())) \
-                .replace("{#QUESTION#}", query) \
-                .replace("{#RELATED_DOCUMENT#}", related_document)
+            rag_system_prompt = get_prompt_template("basic_rag")["system"]
+            rag_query = get_prompt_template("basic_rag")["user"].replace("{input}", query) \
+                .replace("{all_document_str}", related_document)
 
             rag_response = self.chat(
-                [{"role": "user", "content": rag_query}],
+                [{"role": "system", "content": rag_system_prompt},
+                 {"role": "user", "content": rag_query}],
                 0.7, 0.9
             ).content
             messages.append({"role": "system", "content": rag_response})
         # 后序提问 直接大模型回答
         else:
-            normal_response = self.chat(
-                messages,
-                0.7, 0.9
-            ).content
-            messages.append({"role": "system", "content": normal_response})
+            pass
+            # normal_response = self.chat(
+            #     messages,
+            #     0.7, 0.9
+            # ).content
+            # messages.append({"role": "system", "content": normal_response})
 
         # messages.append({"role": "system", "content": rag_response})
         return messages
@@ -177,6 +174,7 @@ class Rag:
             temperature=temperature
         )
         return completion.choices[0].message
+
 
 if __name__ == "__main__":
     rag = Rag()
