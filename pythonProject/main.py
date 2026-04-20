@@ -15,11 +15,9 @@ from pythonProject.file_handler import FileHandler
 from processor import DocumentProcessor
 from rag_api import Rag
 app = FastAPI()
+from src.app_config.loder import ConfigLoader
 
-import yaml
-
-with open("config.yaml", "r") as file:
-    config = yaml.safe_load(file)
+config_manager = ConfigLoader()
 
 
 # 新增知识库
@@ -208,4 +206,4 @@ def chat(req: RAGRequest) -> RAGResponse:
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=config["rag"]["port"], workers=1)
+    uvicorn.run(app, host="0.0.0.0", port=config_manager.config.rag.port, workers=1)

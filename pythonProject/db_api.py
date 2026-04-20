@@ -3,24 +3,24 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from datetime import datetime
 import pymysql
 import yaml  # type: ignore
+from src.app_config.loder import ConfigLoader
 
-with open("config.yaml", "r") as file:
-    config = yaml.safe_load(file)
+config_manager = ConfigLoader()
 
-db_config = config['database']
-db_type = db_config['engine']
+db_config = config_manager.config.database
+db_type = db_config.engine
 
 if db_type == "sqlite":
     # SQLite 使用文件路径
-    db_path = db_config.get('path', 'rag.db')
+    db_path = db_config.path
     engine = create_engine(f"sqlite:///{db_path}", echo=True)
 else:
     # MySQL 或其他数据库使用 host, port, username, password
-    host = db_config.get('host', 'localhost')
-    port = db_config.get('port', 3306)
-    username = db_config.get('username', 'yifei')
-    password = db_config.get('password', '111111')
-    database = db_config.get('mydb')  # 数据库名
+    host = db_config.host
+    port = db_config.port
+    username = db_config.username
+    password = db_config.password
+    database = db_config.mydb  # 数据库名
 
     engine = create_engine(
         f"{db_type}://{username}:{password}@{host}:{port}/{database}",
@@ -49,7 +49,8 @@ class KnowledgeDatabase(Base):
     def __str__(self):
         return (f"KnowledgeDatabase(knowledge_id={self.knowledge_id}, "
                 f"title='{self.title}', category='{self.category}', "
-                f"author_id={self.author_id}, create_dt={self.create_dt}, "
+                # f"author_id={self.author_id},"
+                f"create_dt={self.create_dt}, "
                 f"update_dt={self.update_dt})")
 
 

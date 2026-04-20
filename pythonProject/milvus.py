@@ -6,9 +6,9 @@ from paddleocr import PaddleOCR
 from enum import Enum
 import yaml
 from typing import List, Dict, Any
+from src.app_config.loder import ConfigLoader
 
-with open("config.yaml", "r") as file:
-    config = yaml.safe_load(file)
+config_manager = ConfigLoader()
 
 # print(f"protobuf 版本: {google.protobuf.__version__}")
 #
@@ -16,8 +16,8 @@ with open("config.yaml", "r") as file:
 # client = MilvusClient(uri="tcp://localhost:19530")
 # print(client.get_server_version())
 
-client = MilvusClient(host=config["milvus"]["host"], port=config["milvus"]["port"])
-print(client.get_server_version())
+# client = MilvusClient(host=config_manager.config.milvus.host, port=config_manager.config.milvus.port)
+# print(client.get_server_version())
 
 
 class CollectionType(Enum):
@@ -28,7 +28,7 @@ class CollectionType(Enum):
 
 class MilvusManager:
     def __init__(self):
-        self.client = MilvusClient(host=config["milvus"]["host"], port=config["milvus"]["port"])
+        self.client = MilvusClient(host=config_manager.config.milvus.host, port=config_manager.config.milvus.port)
         self.activate_collection = None
 
     def init_collection(self, content_type: CollectionType):
@@ -38,19 +38,21 @@ class MilvusManager:
             print(f"集合 {collection_name} 已存在")
             return collection_name
 
-        schema = client.create_schema(
+        schema = self.client.create_schema(
             auto_id=False,
             enable_dynamic_field=True,  # 允许动态字段（可选）
         )
 
         # 主键字段
         schema.add_field(field_name="id", datatype=DataType.VARCHAR, max_length=128, is_primary=True)
+
+        model_name=config_manager.config.rag.embedding_model
         # 向量字段
         schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR,
-                         dim=config["models"]["embedding_model"]["bge-small-zh-v1.5"]["dims"])
+                         dim=config_manager.config.models.embedding_model[model_name].dims)
         # 文本字段
         schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=2048)  # 存储原文
-        index_params = client.prepare_index_params()
+        index_params = self.client.prepare_index_params()
 
         # 为 vector 字段创建索引
         # index_params.add_index(

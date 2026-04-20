@@ -3,18 +3,19 @@ from typing import List, Dict
 import uuid
 from embedding import VecEmbedding
 import yaml
+from src.app_config.loder import ConfigLoader
 
-with open("config.yaml", "r") as file:
-    config = yaml.safe_load(file)
+config_manager = ConfigLoader()
 
 
 class OCRChuck:
     def __init__(self):
         self.cleanSentence = []
-        self.chunk_size = config["rag"]["chunk_size"]
-        self.chunk_overlap = config["rag"]["chunk_overlap"]
+        self.chunk_size = config_manager.config.rag.chunk_size
+        self.chunk_overlap = config_manager.config.rag.chunk_overlap
 
-    # ============ 2. 文本清洗 加结构化数据===========
+        # ============ 2. 文本清洗 加结构化数据===========
+
     def clean_sentences(self, sentences: List[str], source: str, source_type: str, semantic_chunking: bool = True) -> \
             List[Dict]:
         for idx, (text, confidence) in enumerate(sentences):

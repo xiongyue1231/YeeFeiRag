@@ -7,10 +7,10 @@ from openai import OpenAI
 from embedding import VecEmbedding
 from milvus import MilvusManager
 import datetime
-with open("config.yaml", "r") as f:
-    config = yaml.safe_load(f)
+from src.app_config.loder import ConfigLoader
 
-device = config["device"]
+config_manager = ConfigLoader()
+device = config_manager.config.deviceSettings.device
 
 EMBEDDING_MODEL_PARAMS: Dict[Any, Any] = {}
 
@@ -41,9 +41,10 @@ def load_rerank_model(model_name: str, model_path: str) -> None:
         EMBEDDING_MODEL_PARAMS["rerank_model"].to()
 
 
-if config["rag"]["use_rerank"]:
-    model_name = config["rag"]["rerank_model"]
-    model_path = config["models"]["rerank_model"][model_name]["local_url"]
+if  config_manager.config.rag.use_rerank:
+    model_name = config_manager.config.rag.rerank_model
+    model_info = config_manager.config.models.rerank_model[model_name]
+    model_path =model_info.local_url
 
     print(f"Loading rerank model {model_name} from model_path...")
     load_rerank_model(model_name, model_path)
@@ -51,17 +52,17 @@ if config["rag"]["use_rerank"]:
 
 class Rag:
     def __init__(self):
-        self.rerank_model = config["rag"]["rerank_model"]
-        self.device = config["device"]
+        self.rerank_model = config_manager.config.rag.rerank_model
+        self.device = config_manager.config.deviceSettings.device
         self.client = OpenAI(
-            api_key=config["rag"]["llm_api_key"] if config["rag"]["is_llm"] else config["rag"]["vllm_api_key"],
-            base_url=config["rag"]["llm_base"] if config["rag"]["is_llm"] else config["rag"]["vllm_base"]
+            api_key=config_manager.config.rag.llm_api_key if config_manager.config.rag.is_llm else config_manager.config.rag.vllm_api_key,
+            base_url=config_manager.config.rag.llm_base if config_manager.config.rag.is_llm else config_manager.config.rag.vllm_base
         )
-        self.llm_model = config["rag"]["llm_model"] if config["rag"]["is_llm"] else config["rag"]["vllm_model"]
+        self.llm_model =config_manager.config.rag.llm_model if config_manager.config.rag.is_llm else config_manager.config.rag.vllm_model
         self.Vec = VecEmbedding()
-        self.use_rerank = config["rag"]["use_rerank"]
+        self.use_rerank =config_manager.config.rag.use_rerank
         self.milvus = MilvusManager()
-        self.chunk_candidate = config["rag"]["chunk_candidate"]
+        self.chunk_candidate =config_manager.config.rag.chunk_candidate
 
     def get_rank(self, text_pair) -> np.ndarray:
         """
