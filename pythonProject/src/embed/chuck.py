@@ -15,7 +15,7 @@ class OCRChuck:
 
         # ============ 2. 文本清洗 加结构化数据===========
 
-    def clean_sentences(self, sentences: List[str], source: str, source_type: str, semantic_chunking: bool = True) -> \
+    def clean_sentences(self, sentences: List[str], source: str, source_type: str, source_hash: str, semantic_chunking: bool = True) -> \
             List[Dict]:
         for idx, (text, confidence) in enumerate(sentences):
             cleaned_text = re.sub(r'\s+', '', text)
@@ -28,7 +28,7 @@ class OCRChuck:
             if len(text) < self.chunk_size:
                 vec = embedding.get_embedding(text).tolist()
                 # 短句：直接入库（单句=单chunk）
-                self._add_chunk(idx, source, sentences, text, vec,source_hash, source_type)
+                self._add_chunk(idx, source, sentences, text, vec, source_hash, source_type)
             else:
                 # 长句：分块入库
                 chucks = self._split_long_text(text, self.chunk_size, self.chunk_overlap, semantic_chunking)

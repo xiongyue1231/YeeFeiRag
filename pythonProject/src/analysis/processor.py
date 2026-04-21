@@ -26,7 +26,7 @@ class DocumentProcessor:
         self.store_to_milvus.delete_old_chunks_by_hash(config_manager.config.milvus.collection_name, source_hash)
 
         # 2. 文本分块
-        data = self.chuck_handler.clean_sentences(content, file_path, filetype)
+        data = self.chuck_handler.clean_sentences(content, file_path, filetype,source_hash)
 
         # 初始化Collection     CollectionType[filetype]
         # 以后如果有特殊要求，这里进行切换collection
