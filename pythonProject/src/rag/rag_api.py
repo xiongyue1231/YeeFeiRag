@@ -3,13 +3,11 @@ from typing import Union, List, Any, Dict
 import numpy as np
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from openai import OpenAI
-from ..embed.embedding import VecEmbedding
-from ..database.milvus import MilvusManager
-import datetime
-from ..app_config.loder import ConfigLoader
-from ..core.utils import create_llm_client
-from ..prompts.templates import get_prompt_template
+from src.embed.embedding import VecEmbedding
+from src.database.milvus import MilvusManager
+from src.app_config.loder import ConfigLoader
+from src.core.utils import create_llm_client
+from src.prompts.templates import get_prompt_template
 
 config_manager = ConfigLoader()
 device = config_manager.config.deviceSettings.device
@@ -135,11 +133,12 @@ class Rag:
         if len(messages) == 1:
             query = messages[0]["content"]
             # 对用户提问进行改写  目前使用大模型进行改写
-            query = self.client.chat(
-                [{"role": "system", "content": get_prompt_template("rewriter")["system"]},
+            query = self.client.chat.completions.create(
+                model=self.llm_model,
+                messages= [{"role": "system", "content": get_prompt_template("rewriter")["system"]},
                  {"role": "user", "content": get_prompt_template("rewriter")["user"].replace("{original_input}", query)}],
-                top_p=0.9, temperature=0.5
-            ).content
+            ).choices[0].message.content
+
             related_records = self.query_document(query, knowledge_id)  # 检索到相关的文档
             print(related_records)
             related_document = '\n'.join([x["chunk_content"][0] for x in related_records])
@@ -178,4 +177,4 @@ class Rag:
 
 if __name__ == "__main__":
     rag = Rag()
-    rag.chat_with_rag(1, [{"role": "user", "content": "请给我一个房间的描述"}])
+    rag.chat_with_rag(1, [{"role": "user", "content": "人工智能生产式的伦理挑战是什么"}])

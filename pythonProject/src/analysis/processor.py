@@ -23,9 +23,9 @@ class DocumentProcessor:
         # 2. 文本分块
         data = self.chuck_handler.clean_sentences(content, file_path, filetype)
 
-        # 创建milvus表
-        self.store_to_milvus.init_collection(CollectionType[filetype])
-        self.store_to_milvus.set_collection(CollectionType[filetype])
+        # 创建milvus表   默认采用一个，没必要通过文件类型去创建多个Collection     CollectionType[filetype]
+        self.store_to_milvus.init_collection(CollectionType.document)
+        self.store_to_milvus.set_collection(CollectionType.document)
         # 3. 入库（统一在这里处理）
         self.store_to_milvus.add_document(data)
 

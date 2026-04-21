@@ -8,7 +8,7 @@ def create_llm_client(config: RagConfig):
     """创建LLM客户端"""
     if config.provider == "openai":
         kwargs = {
-            "model": config.model
+
         }
         if config.llm_api_key:
             kwargs["api_key"] = config.llm_api_key

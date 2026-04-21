@@ -4,6 +4,7 @@ from ..app_config.loder import ConfigLoader
 
 config_manager = ConfigLoader()
 
+
 class VecEmbedding:
     def __init__(self, model_path=None, device=config_manager.config.deviceSettings.device):
         if model_path is None:

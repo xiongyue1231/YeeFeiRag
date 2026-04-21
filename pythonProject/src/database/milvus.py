@@ -1,19 +1,16 @@
-
 from pymilvus import MilvusClient, DataType
-import google.protobuf
-from paddleocr import PaddleOCR
 from enum import Enum
-import yaml
 from typing import List, Dict, Any
-from ..app_config.loder import ConfigLoader
-
+from src.app_config.loder import ConfigLoader
+import pymilvus
 config_manager = ConfigLoader()
+
 
 # print(f"protobuf 版本: {google.protobuf.__version__}")
 #
 # # gRPC 方式（推荐，性能更好）
-# client = MilvusClient(uri="tcp://localhost:19530")
-# print(client.get_server_version())
+client = MilvusClient(uri="tcp://localhost:19530")
+print(client.get_server_version())
 
 # client = MilvusClient(host=config_manager.config.milvus.host, port=config_manager.config.milvus.port)
 # print(client.get_server_version())
@@ -22,7 +19,7 @@ config_manager = ConfigLoader()
 class CollectionType(Enum):
     text = "text_collection"  # 文档数据
     image = "image_collection"  # 图片 OCR
-    document = "document_collection"  # 表格数据
+    document = "document_collection"  # word数据
 
 
 class MilvusManager:
@@ -32,7 +29,7 @@ class MilvusManager:
 
     def init_collection(self, content_type: CollectionType):
         collection_name = content_type.value
-
+        print()
         if self.client.has_collection(collection_name):
             print(f"集合 {collection_name} 已存在")
             return collection_name
@@ -50,16 +47,10 @@ class MilvusManager:
         schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR,
                          dim=config_manager.config.models.embedding_model[model_name].dims)
         # 文本字段
-        schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=2048)  # 存储原文
+        schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=65535,enable_analyzer=True)  # 存储原文
         index_params = self.client.prepare_index_params()
 
         # 为 vector 字段创建索引
-        # index_params.add_index(
-        #     field_name="vector",  # 索引字段
-        #     index_type="IVF_FLAT",  # 索引类型
-        #     metric_type="IP",  # 度量类型（与 collection 一致）
-        #     params={"nlist": 128}  # 索引参数
-        # )
         index_params.add_index(
             field_name="vector",  # 索引字段
             index_type="HNSW",  # 索引类型
@@ -110,10 +101,10 @@ class MilvusManager:
                 if len(query) > 0:
                     hits = self.client.search(
                         collection_name=collection_name,
-                        data=[query_vector],
+                        data=query,
                         anns_field="text",
                         limit=top_k,
-                        output_fields=["*"]  # 返回所有字段
+                        output_fields=["text","metadata"]  # 返回所有字段
                     )
                 else:
                     # 执行搜索
@@ -132,3 +123,9 @@ class MilvusManager:
                 results[collection_name] = []
 
         return results
+
+
+
+if __name__ == '__main__':
+    milvus_manager = MilvusManager()
+    milvus_manager.search_all_collections("人工智能", [])

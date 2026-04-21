@@ -9,11 +9,12 @@ database:
   mydb: "yeefeirag"
 
 milvus:
-  dims: 768,
+  dims: 768
   host: "localhost"
   port: 19530
 
-device: "cpu" # "cpu"
+deviceSettings:
+  device: "cpu"
 
 
 models:
