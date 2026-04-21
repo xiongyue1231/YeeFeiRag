@@ -10,7 +10,8 @@ class MilvusConfig(BaseModel):
     """Milvus配置"""
     dims: int = 768
     host: str = "localhost"
-    port: int = 19530
+    port: int = 19530,
+    collection_name: str = "document_collection"
 
 
 class DatabaseConfig(BaseModel):

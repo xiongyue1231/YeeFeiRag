@@ -1,34 +1,27 @@
-from pymilvus import MilvusClient, DataType
+from pymilvus import MilvusClient, DataType, Collection
 from enum import Enum
 from typing import List, Dict, Any
 from src.app_config.loder import ConfigLoader
-import pymilvus
+import hashlib
+
 config_manager = ConfigLoader()
-
-
 # print(f"protobuf 版本: {google.protobuf.__version__}")
 #
 # # gRPC 方式（推荐，性能更好）
 client = MilvusClient(uri="tcp://localhost:19530")
 print(client.get_server_version())
 
+
 # client = MilvusClient(host=config_manager.config.milvus.host, port=config_manager.config.milvus.port)
 # print(client.get_server_version())
-
-
-class CollectionType(Enum):
-    text = "text_collection"  # 文档数据
-    image = "image_collection"  # 图片 OCR
-    document = "document_collection"  # word数据
-
 
 class MilvusManager:
     def __init__(self):
         self.client = MilvusClient(host=config_manager.config.milvus.host, port=config_manager.config.milvus.port)
         self.activate_collection = None
 
-    def init_collection(self, content_type: CollectionType):
-        collection_name = content_type.value
+    def init_collection(self, content_type: str):
+        collection_name = content_type
         print()
         if self.client.has_collection(collection_name):
             print(f"集合 {collection_name} 已存在")
@@ -42,12 +35,12 @@ class MilvusManager:
         # 主键字段
         schema.add_field(field_name="id", datatype=DataType.VARCHAR, max_length=128, is_primary=True)
 
-        model_name=config_manager.config.rag.embedding_model
+        model_name = config_manager.config.rag.embedding_model
         # 向量字段
         schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR,
                          dim=config_manager.config.models.embedding_model[model_name].dims)
         # 文本字段
-        schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=65535,enable_analyzer=True)  # 存储原文
+        schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=65535, enable_analyzer=True)  # 存储原文
         index_params = self.client.prepare_index_params()
 
         # 为 vector 字段创建索引
@@ -67,14 +60,14 @@ class MilvusManager:
                                       )
         return collection_name
 
-    def set_collection(self, content_type: CollectionType):
+    def set_collection(self, content_type: str):
         """切换当前操作的集合"""
-        self.activate_collection = content_type.value
+        self.activate_collection = content_type
         print(f"切换到集合: {self.activate_collection}")
 
-    def add_document(self, data, content_type: CollectionType = None):
+    def add_document(self, data, content_type: str):
         """添加文档到指定集合"""
-        collection = content_type.value if content_type else self.activate_collection
+        collection = content_type if content_type != '' else self.activate_collection
 
         if not collection:
             raise ValueError("请指定 content_type 或先调用 set_collection()")
@@ -104,7 +97,7 @@ class MilvusManager:
                         data=query,
                         anns_field="text",
                         limit=top_k,
-                        output_fields=["text","metadata"]  # 返回所有字段
+                        output_fields=["text", "metadata"]  # 返回所有字段
                     )
                 else:
                     # 执行搜索
@@ -124,6 +117,29 @@ class MilvusManager:
 
         return results
 
+    def get_file_md5(self, file_path: str) -> str:
+        """
+        计算文件的 MD5 值（根据文件内容，不是文件名）
+        """
+        hash_md5 = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    def delete_old_chunks_by_hash(self, collection_name: str, source_hash: str):
+        """
+        根据文件 hash 删除旧的向量数据（去重核心）
+        """
+        coll = Collection(collection_name)
+        coll.load()  # 必须 load 才能删
+
+        # 拼接删除表达式
+        expr = f'source_hash == "{source_hash}"'
+
+        # 执行删除
+        coll.delete(expr)
+        print(f"✅ 已删除旧数据，hash={source_hash}")
 
 
 if __name__ == '__main__':
