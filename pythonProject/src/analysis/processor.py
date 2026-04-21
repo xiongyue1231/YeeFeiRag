@@ -28,11 +28,13 @@ class DocumentProcessor:
         # 2. 文本分块
         data = self.chuck_handler.clean_sentences(content, file_path, filetype)
 
+
         # 初始化Collection     CollectionType[filetype]
+        # 以后如果有特殊要求，这里进行切换collection
         self.store_to_milvus.init_collection(config_manager.config.milvus.collection_name)
         self.store_to_milvus.set_collection(config_manager.config.milvus.collection_name)
         # 3. 入库（统一在这里处理）
-        self.store_to_milvus.add_document(data)
+        self.store_to_milvus.add_document(data,config_manager.config.milvus.collection_name)
 
         return {"status": "success"
                 # , "chunks": len(chunks)
