@@ -13,7 +13,7 @@ milvus:
   host: "localhost"
   port: 19530
   # 单个collection ,无特殊要求只用一个
-  collection_name: "document_collection"
+  collection_name: "current_collection_test"
 
 deviceSettings:
   device: "cpu"

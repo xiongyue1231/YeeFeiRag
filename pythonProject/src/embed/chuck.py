@@ -15,7 +15,8 @@ class OCRChuck:
 
         # ============ 2. 文本清洗 加结构化数据===========
 
-    def clean_sentences(self, sentences: List[str], source: str, source_type: str, source_hash: str, semantic_chunking: bool = True) -> \
+    def clean_sentences(self, sentences: List[str], source: str, source_type: str, source_hash: str, knowledge_id: int,
+                        document_id: int, semantic_chunking: bool = True) -> \
             List[Dict]:
         for idx, (text, confidence) in enumerate(sentences):
             cleaned_text = re.sub(r'\s+', '', text)
@@ -28,22 +29,25 @@ class OCRChuck:
             if len(text) < self.chunk_size:
                 vec = embedding.get_embedding(text).tolist()
                 # 短句：直接入库（单句=单chunk）
-                self._add_chunk(idx, source, sentences, text, vec, source_hash, source_type)
+                self._add_chunk(idx, source, sentences, text, vec, source_hash, knowledge_id, document_id, source_type)
             else:
                 # 长句：分块入库
                 chucks = self._split_long_text(text, self.chunk_size, self.chunk_overlap, semantic_chunking)
                 for chunk in chucks:
                     vec = embedding.get_embedding(chunk).tolist()
-                    self._add_chunk(idx, source, sentences, text, vec,source_hash, source_type)
+                    self._add_chunk(idx, source, sentences, text, vec, source_hash, knowledge_id, document_id, source_type)
 
         return self.cleanSentence
 
-    def _add_chunk(self, idx, source, sentences, text, vec,hash_md5, source_type="image"):
+    def _add_chunk(self, idx, source, sentences, text, vec, hash_md5, knowledge_id: int, document_id: int,
+                   source_type="image"):
         data = {
             "id": f"{source}_sent_{idx}",
             "text": text,  # 原始文本
             "vector": vec,
             "metadata": {
+                "knowledge_id": knowledge_id,
+                "document_id": document_id,
                 "source_hash": hash_md5,  # 新增：文件md5哈希，用于去重
                 "source": str(source),
                 "sentence_index": int(idx),
@@ -128,9 +132,6 @@ class OCRChuck:
             start += (window_size - overlap)
 
         return chunks
-
-
-
 
 # if __name__ == "__main__":
 #     test = """这个就是前面房型融合想更细会出现的问题。目前程序的逻辑是 房型名称及床型，在另外一个房型名称及床型（名称包含、房型一样）就会认为是相同房型，比如：泰迪珍藏君悦豪华大床房 ，君悦豪华大床房 房型名称，按照逻辑

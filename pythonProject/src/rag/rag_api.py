@@ -10,6 +10,10 @@ from src.core.utils import create_llm_client
 from src.prompts.templates import get_prompt_template
 import os
 from pathlib import Path
+from src.database.db_api import (  # type: ignore
+    KnowledgeDocument, KnowledgeDatabase,
+    Session
+)
 
 config_manager = ConfigLoader()
 device = config_manager.config.deviceSettings.device
@@ -84,11 +88,14 @@ class Rag:
     # knowledge_id知识库ID
     def query_document(self, query: str, knowledge_id: int) -> List[str]:
         global sorted_content, sorted_records
+
+        knowledge_record = Session().query(KnowledgeDatabase).filter(
+            KnowledgeDatabase.knowledge_id == knowledge_id).first()
         # 全文检索，指定一个知识库检索，bm25打分
-        word_search_response = self.milvus.search_bm25(query, top_k=5)
+        word_search_response = self.milvus.search_bm25(query, collection_name=knowledge_record.category, top_k=5)
         # 语义检索
         embedding_vector = self.Vec.get_embedding(query)  # 编码
-        vector_search_response = self.milvus.search_dense(embedding_vector, top_k=5)
+        vector_search_response = self.milvus.search_dense(embedding_vector,collection_name=knowledge_record.category, top_k=5)
 
         if self.use_rrf:
             # rrf 融合排序算法
@@ -146,11 +153,12 @@ class Rag:
             # 对用户提问进行改写  目前使用大模型进行改写
             query = self.chat([{"role": "system", "content": get_prompt_template("rewriter")["system"]},
                                {"role": "user",
-                                "content": get_prompt_template("rewriter")["user"].replace("{original_input}", query)}],0.1,0.1
+                                "content": get_prompt_template("rewriter")["user"].replace("{original_input}", query)}],
+                              0.1, 0.1
                               ).content
             print(f"【大模型改写用户提问】【改写后：{query}】")
             related_records = self.query_document(query, knowledge_id)  # 检索到相关的文档
-            print(related_records)
+            # print(f"{related_records}")
             related_document = '\n'.join([x["text"] for x in related_records])
 
             rag_system_prompt = get_prompt_template("basic_rag")["system"]
@@ -160,7 +168,7 @@ class Rag:
             messages = self.chat(
                 [{"role": "system", "content": rag_system_prompt},
                  {"role": "user", "content": rag_query}],
-                0.5, 0.7
+                0.1, 0.9
             ).content
 
         # 后序提问 直接大模型回答
@@ -174,7 +182,6 @@ class Rag:
 
         # messages.append({"role": "system", "content": rag_response})
         return messages
-
 
     def chat(self, messages: List[Dict], top_p: float, temperature: float) -> Any:
         """
@@ -192,5 +199,5 @@ class Rag:
 
 if __name__ == "__main__":
     rag = Rag()
-    res= rag.chat_with_rag(1, [{"role": "user", "content": "你好"}])
+    res = rag.chat_with_rag(1, [{"role": "user", "content": "测试"}])
     print(res)

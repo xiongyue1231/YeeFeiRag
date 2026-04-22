@@ -108,9 +108,6 @@ class MilvusManager:
 
         if isinstance(data, dict):
             data = [data]
-        # for item in data:
-        #     if "sparse_bm25" not in item:
-        #         item["sparse_bm25"] = {}  # 或 []，根据 Milvus 版本调整
 
         self.client.insert(collection_name, data=data)
         print(f"向集合 {collection_name} 添加了 {len(data)} 条数据")
@@ -149,7 +146,7 @@ class MilvusManager:
             limit=top_k,
             output_fields=["text", "source_hash", "metadata"]
         )
-
+        print(f"【调试】向量匹配 查询返回 hits 数量: {len(hits[0]) if hits else 0}")
         return hits[0] if hits else []
 
     def search_hybrid(self, collection_name: str, query: str, query_vector: List[float], top_k: int = 5) -> List[Dict]:

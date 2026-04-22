@@ -8,15 +8,15 @@ from typing_extensions import Annotated
 from route_schemas import (
     DocumentResponse, KnowledgeRequest, KnowledgeResponse, RAGRequest, RAGResponse
 )
-from .src.database.db_api import (
+from src.database.db_api import (
     KnowledgeDatabase, KnowledgeDocument, Session,
 )
-from .src.analysis.file_handler import FileHandler
-from .src.analysis.processor import DocumentProcessor
-from .src.rag.rag_api import Rag
+from src.analysis.file_handler import FileHandler
+from src.analysis.processor import DocumentProcessor
+from src.rag.rag_api import Rag
 
 app = FastAPI()
-from .src.app_config.loder import ConfigLoader
+from src.app_config.loder import ConfigLoader
 
 config_manager = ConfigLoader()
 
@@ -123,11 +123,13 @@ async def add_document(
             # 上传的文档，记录在关系型数据库中， orm 添加记录
             # 创建数据库连接
             with Session() as session:
-                record = session.query(KnowledgeDatabase).filter(KnowledgeDatabase.knowledge_id == knowledge_id).first()
-                if record is None:
+                knowledge_record  = session.query(KnowledgeDatabase).filter(KnowledgeDatabase.knowledge_id == knowledge_id).first()
+                if knowledge_record  is None:
                     response_msg = "知识库不存在，请提前创建"
                     break
 
+                collection_name = knowledge_record.category
+                # 关系型数据库 添加记录
                 record = KnowledgeDocument(
                     title=title,
                     category=category,
@@ -153,12 +155,14 @@ async def add_document(
 
             # 文档内容解析，后台执行，后台提取数据
             background_tasks.add_task(
-                DocumentProcessor().process_and_store(file_path),  # 后台运行的函数名
+                # 文件处理入库函数
+                DocumentProcessor().process_and_store,
                 knowledge_id=knowledge_id,
                 document_id=document_id,
-                title=title,
+                # title=title,
                 file_type=file.content_type,
-                file_path=file_path
+                file_path=file_path,
+                collection_name=collection_name,
             )
 
             return DocumentResponse(

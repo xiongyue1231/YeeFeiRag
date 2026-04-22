@@ -11,7 +11,7 @@ class MilvusConfig(BaseModel):
     dims: int = 768
     host: str = "localhost"
     port: int = 19530
-    collection_name: str = "document_collection"
+    collection_name: str = "current_collection_test"
 
 
 class DatabaseConfig(BaseModel):
