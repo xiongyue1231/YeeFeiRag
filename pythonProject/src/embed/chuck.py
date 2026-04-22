@@ -1,6 +1,6 @@
 import re
 from typing import List, Dict
-from embedding import VecEmbedding
+from src.embed.embedding import VecEmbedding
 from src.app_config.loder import ConfigLoader
 import hashlib
 

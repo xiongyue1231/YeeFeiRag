@@ -11,7 +11,7 @@ database:
 milvus:
   dims: 768
   host: "localhost"
-  port: 19530,
+  port: 19530
   # 单个collection ,无特殊要求只用一个
   collection_name: "document_collection"
 
@@ -23,13 +23,13 @@ models:
   embedding_model:
     bge-small-zh-v1.5:
       hf_url: "https://huggingface.co/BAAI/bge-small-zh-v1.5"
-      local_url: "./models/BAAI/bge-small-zh-v1.5/"
+      local_url: "../models/BAAI/bge-small-zh-v1.5"
       dims: 512
 
   rerank_model:
     bge-reranker-base:
       hf_url: "https://huggingface.co/BAAI/bge-reranker-base"
-      local_url: "./models/BAAI/bge-reranker-base"
+      local_url: "../models/BAAI/bge-reranker-base"
 
 
 rag:
@@ -49,7 +49,7 @@ rag:
   chunk_overlap: 20
   chunk_candidate: 10
   use_embedding: true
-  use_rerank: false
+  use_rerank: true
   use_rrf: true
   port: 6010
   provider: "openai"

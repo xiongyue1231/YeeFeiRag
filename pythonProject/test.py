@@ -20,7 +20,7 @@
 
 #模型下载
 from modelscope import snapshot_download
-model_dir = snapshot_download('BAAI/bge-reranker-base',local_dir='./models/BAAI/bge-reranker-base')
+model_dir = snapshot_download('BAAI/bge-reranker-base', local_dir='src/models/BAAI/bge-reranker-base')
 
 from .src.embed.embedding import VecEmbedding
 import re

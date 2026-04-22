@@ -1,19 +1,17 @@
-from pymilvus import MilvusClient, DataType, Collection
+from pymilvus import MilvusClient, DataType, Collection,Function,FunctionType,FieldSchema,CollectionSchema
 from enum import Enum
 from typing import List, Dict, Any
 from src.app_config.loder import ConfigLoader
 import hashlib
 
 config_manager = ConfigLoader()
-# print(f"protobuf 版本: {google.protobuf.__version__}")
-#
 # # gRPC 方式（推荐，性能更好）
-client = MilvusClient(uri="tcp://localhost:19530")
-print(client.get_server_version())
-
-
-# client = MilvusClient(host=config_manager.config.milvus.host, port=config_manager.config.milvus.port)
+# client = MilvusClient(uri="tcp://localhost:19530")
 # print(client.get_server_version())
+# import pymilvus
+# print(pymilvus.__version__)
+# 1.milvus版本和pymilvus需要保持一致
+# 2.milvus 2.5.x 以上版本才支持bm25，否则会报错
 
 class MilvusManager:
     def __init__(self):
@@ -22,25 +20,54 @@ class MilvusManager:
 
     def init_collection(self, content_type: str):
         collection_name = content_type
-        print()
         if self.client.has_collection(collection_name):
             print(f"集合 {collection_name} 已存在")
             return collection_name
 
-        schema = self.client.create_schema(
-            auto_id=False,
-            enable_dynamic_field=True,  # 允许动态字段（可选）
+        fields = [
+            FieldSchema(
+                name="id",
+                dtype=DataType.VARCHAR,
+                max_length=128,
+                is_primary=True
+            ),
+            FieldSchema(
+                name="vector",
+                dtype=DataType.FLOAT_VECTOR,
+                dim=config_manager.config.models.embedding_model[config_manager.config.rag.embedding_model].dims
+            ),
+            FieldSchema(
+                name="text",
+                dtype=DataType.VARCHAR,
+                max_length=65535,
+                enable_analyzer=True,
+                # 分词器，创建字段时，指定分词器， "type": "chinese"中英混合
+                analyzer_params={
+                    "type": "chinese"
+                }
+            ),
+            FieldSchema(
+                name="sparse_bm25",
+                dtype=DataType.SPARSE_FLOAT_VECTOR,
+                is_sparse=True,
+            ),
+        ]
+        # bm25,新增的function函数会将text字段转换为稀疏向量，通过这个方法自动保存
+        bm25_func = Function(
+            name="bm25_text_emb",
+            function_type=FunctionType.BM25,
+            input_field_names=["text"],
+            output_field_names=["sparse_bm25"]
         )
 
-        # 主键字段
-        schema.add_field(field_name="id", datatype=DataType.VARCHAR, max_length=128, is_primary=True)
+        # 原生 schema（支持 function！）
+        schema = CollectionSchema(
+            fields=fields,
+            auto_id=False,
+            enable_dynamic_field=True
+        )
+        schema.add_function(bm25_func)
 
-        model_name = config_manager.config.rag.embedding_model
-        # 向量字段
-        schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR,
-                         dim=config_manager.config.models.embedding_model[model_name].dims)
-        # 文本字段
-        schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=65535, enable_analyzer=True)  # 存储原文
         index_params = self.client.prepare_index_params()
 
         # 为 vector 字段创建索引
@@ -48,14 +75,21 @@ class MilvusManager:
             field_name="vector",  # 索引字段
             index_type="HNSW",  # 索引类型
             metric_type="IP",  # 度量类型（与 collection 一致）
-            params={"M": 16,  # 推荐 16-32
-                    "efConstruction": 32  # 推荐 ≥ 2*M
+            params={"M": 16,  # 推荐 16-32   邻居数
+                    "efConstruction": 32  # 推荐 ≥ 2*M   从多少个中中选择最相似的
                     }  # 索引参数
         )
+        # BM25 稀疏向量索引（SPARSE_WAND 适合 BM25）
+        index_params.add_index(
+            field_name="sparse_bm25",
+            index_type="SPARSE_INVERTED_INDEX",
+            metric_type="BM25",
+            params={"inverted_index_algo": "DAAT_MAXSCORE"}
+        )
+
         # 创建表
         self.client.create_collection(collection_name,
                                       schema=schema,
-                                      metric_type="IP",
                                       index_params=index_params
                                       )
         return collection_name
@@ -67,55 +101,75 @@ class MilvusManager:
 
     def add_document(self, data, content_type: str):
         """添加文档到指定集合"""
-        collection = content_type if content_type != '' else self.activate_collection
+        collection_name = content_type if content_type != '' else self.activate_collection
 
-        if not collection:
+        if not collection_name:
             raise ValueError("请指定 content_type 或先调用 set_collection()")
 
-        self.client.insert(collection, data=data)
-        print(f"向集合 {collection} 添加了 {len(data)} 条数据")
-        return collection
+        if isinstance(data, dict):
+            data = [data]
+        # for item in data:
+        #     if "sparse_bm25" not in item:
+        #         item["sparse_bm25"] = {}  # 或 []，根据 Milvus 版本调整
+
+        self.client.insert(collection_name, data=data)
+        print(f"向集合 {collection_name} 添加了 {len(data)} 条数据")
+        self.client.flush(collection_name)
+        return collection_name
+
+    # collection_name 目前默认配置文件的collection_name
+    def search_bm25(self, query: str, top_k: int = 5, collection_name: str = config_manager.config.milvus.collection_name) -> List[Dict]:
+        """BM25 全文检索（纯文本关键词匹配）"""
+        if self.client.get_load_state(collection_name) != "Loaded":
+            self.client.load_collection(collection_name)
+        search_params = {
+            "params": {"drop_ratio_search": 0,"analyzer_name": "cn", "metric_type": "BM25"}
+        }
+        hits = self.client.search(
+            collection_name=collection_name,
+            data=[query],  # 直接传原始文本
+            anns_field="sparse_bm25",
+            limit=top_k,
+            search_params=search_params,
+            output_fields=["text", "source_hash", "metadata"]
+        )
+        print(f"【调试】BM25 查询 '{query}' 返回 hits 数量: {len(hits[0]) if hits else 0}")
+        return hits[0] if hits else []
+
+    # collection_name 目前默认配置文件的collection_name
+    def search_dense(self, query_vector: List[float], top_k: int = 5, collection_name: str = config_manager.config.milvus.collection_name) -> List[Dict]:
+        """稠密向量检索（语义匹配）"""
+        if self.client.get_load_state(collection_name) != "Loaded":
+            self.client.load_collection(collection_name)
+
+        hits = self.client.search(
+            collection_name=collection_name,
+            data=[query_vector],
+            anns_field="vector",
+            limit=top_k,
+            output_fields=["text", "source_hash", "metadata"]
+        )
+
+        return hits[0] if hits else []
+
+    def search_hybrid(self, collection_name: str, query: str, query_vector: List[float], top_k: int = 5) -> List[Dict]:
+        """混合检索：BM25（关键词）+ 稠密向量（语义）"""
+        if self.client.get_load_state(collection_name) != "Loaded":
+            self.client.load_collection(collection_name)
+
+        # 同时查两个字段
+        hits = self.client.search(
+            collection_name=collection_name,
+            data=[query, query_vector],  # [BM25文本, 向量]
+            anns_field=["sparse_bm25", "vector"],
+            limit=top_k,
+            output_fields=["text", "source_hash", "metadata"]
+        )
+        return hits[0] if hits else []
 
     def get_all_collections(self) -> List[str]:
         """获取所有 Collection 名称列表"""
         return self.client.list_collections()
-
-    def search_all_collections(self, query, query_vector: List[float], top_k: int = 5) -> Dict[str, List[Dict]]:
-        """在所有已加载的 Collection 中搜索（跨库搜索）"""
-        results = {}
-
-        for collection_name in self.get_all_collections():
-            try:
-                # 检查是否已加载
-                if self.client.get_load_state(collection_name) != "Loaded":
-                    self.client.load_collection(collection_name)
-
-                # 如果query_length>0 则使用原始文本进行搜索，否则使用向量进行搜索
-                if len(query) > 0:
-                    hits = self.client.search(
-                        collection_name=collection_name,
-                        data=query,
-                        anns_field="text",
-                        limit=top_k,
-                        output_fields=["text", "metadata"]  # 返回所有字段
-                    )
-                else:
-                    # 执行搜索
-                    hits = self.client.search(
-                        collection_name=collection_name,
-                        data=[query_vector],
-                        anns_field="vector",
-                        limit=top_k,
-                        output_fields=["*"]  # 返回所有字段
-                    )
-
-                results[collection_name] = hits
-
-            except Exception as e:
-                print(f"搜索 {collection_name} 失败: {e}")
-                results[collection_name] = []
-
-        return results
 
     def get_file_md5(self, file_path: str) -> str:
         """
@@ -130,18 +184,42 @@ class MilvusManager:
     def delete_old_chunks_by_hash(self, collection_name: str, source_hash: str):
         """
         根据文件 hash 删除旧的向量数据（去重核心）
+        ✅ 最终无报错版：自动判断集合 + 正确参数名
         """
-        coll = Collection(collection_name)
-        coll.load()  # 必须 load 才能删
+        # 1. 集合不存在直接跳过，不报错
+        if not self.client.has_collection(collection_name):
+            print(f"⚠️ 集合 {collection_name} 不存在，无需删除旧数据")
+            return
 
-        # 拼接删除表达式
-        expr = f'source_hash == "{source_hash}"'
+        # 2. 加载集合
+        try:
+            if self.client.get_load_state(collection_name) != "Loaded":
+                self.client.load_collection(collection_name)
+        except Exception as e:
+            print(f"⚠️ 集合 {collection_name} 加载失败: {str(e)}")
+            return
 
-        # 执行删除
-        coll.delete(expr)
-        print(f"✅ 已删除旧数据，hash={source_hash}")
+        # 3. 执行删除
+        try:
+            filter_expr = f"source_hash == '{source_hash}'"
+            # 正确写法：MilvusClient 用 filter=
+            self.client.delete(
+                collection_name=collection_name,
+                filter=filter_expr
+            )
+            print(f"✅ 成功删除集合 {collection_name} 中 hash={source_hash} 的旧数据")
+        except Exception as e:
+            print(f"❌ 删除数据失败: {str(e)}")
 
 
+# 在 __main__ 里测试
 if __name__ == '__main__':
-    milvus_manager = MilvusManager()
-    milvus_manager.search_all_collections("人工智能", [])
+    client = MilvusClient(uri="tcp://localhost:19530")
+    print(f"服务器版本: {client.get_server_version()}")
+
+    # 测试分析器是否工作
+    try:
+        result = client.run_analyzer("人工智能生成内容的伦理挑战", analyzer_params={"type": "chinese"})
+        print(f"分词结果: {result}")
+    except Exception as e:
+        print(f"分析器测试失败: {e}")

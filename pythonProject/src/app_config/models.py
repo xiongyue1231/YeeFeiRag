@@ -10,7 +10,7 @@ class MilvusConfig(BaseModel):
     """Milvus配置"""
     dims: int = 768
     host: str = "localhost"
-    port: int = 19530,
+    port: int = 19530
     collection_name: str = "document_collection"
 
 
@@ -41,7 +41,7 @@ class RagConfig(BaseModel):
     chunk_overlap: int = 20
     chunk_candidate: int = 10
     use_embedding: bool = True
-    use_rerank: bool = False
+    use_rerank: bool = True
     use_rrf: bool = True
     port: int = 6010
     provider: str = "openai"
