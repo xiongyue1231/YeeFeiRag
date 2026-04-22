@@ -181,11 +181,11 @@ class MilvusManager:
     def delete_old_chunks_by_hash(self, collection_name: str, source_hash: str):
         """
         根据文件 hash 删除旧的向量数据（去重核心）
-        ✅ 最终无报错版：自动判断集合 + 正确参数名
+        最终无报错版：自动判断集合 + 正确参数名
         """
         # 1. 集合不存在直接跳过，不报错
         if not self.client.has_collection(collection_name):
-            print(f"⚠️ 集合 {collection_name} 不存在，无需删除旧数据")
+            print(f"集合 {collection_name} 不存在，无需删除旧数据")
             return
 
         # 2. 加载集合
@@ -193,7 +193,7 @@ class MilvusManager:
             if self.client.get_load_state(collection_name) != "Loaded":
                 self.client.load_collection(collection_name)
         except Exception as e:
-            print(f"⚠️ 集合 {collection_name} 加载失败: {str(e)}")
+            print(f"集合 {collection_name} 加载失败: {str(e)}")
             return
 
         # 3. 执行删除
@@ -204,9 +204,9 @@ class MilvusManager:
                 collection_name=collection_name,
                 filter=filter_expr
             )
-            print(f"✅ 成功删除集合 {collection_name} 中 hash={source_hash} 的旧数据")
+            print(f"成功删除集合 {collection_name} 中 hash={source_hash} 的旧数据")
         except Exception as e:
-            print(f"❌ 删除数据失败: {str(e)}")
+            print(f"删除数据失败: {str(e)}")
 
 
 # 在 __main__ 里测试
