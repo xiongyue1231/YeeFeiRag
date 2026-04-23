@@ -1,10 +1,12 @@
-from pymilvus import MilvusClient, DataType, Collection,Function,FunctionType,FieldSchema,CollectionSchema
+from pymilvus import MilvusClient, DataType, Collection, Function, FunctionType, FieldSchema, CollectionSchema
 from enum import Enum
 from typing import List, Dict, Any
 from src.app_config.loder import ConfigLoader
 import hashlib
 
 config_manager = ConfigLoader()
+
+
 # # gRPC 方式（推荐，性能更好）
 # client = MilvusClient(uri="tcp://localhost:19530")
 # print(client.get_server_version())
@@ -115,12 +117,13 @@ class MilvusManager:
         return collection_name
 
     # collection_name 目前默认配置文件的collection_name
-    def search_bm25(self, query: str, top_k: int = 5, collection_name: str = config_manager.config.milvus.collection_name) -> List[Dict]:
+    def search_bm25(self, query: str, top_k: int = 5,
+                    collection_name: str = config_manager.config.milvus.collection_name) -> List[Dict]:
         """BM25 全文检索（纯文本关键词匹配）"""
         if self.client.get_load_state(collection_name) != "Loaded":
             self.client.load_collection(collection_name)
         search_params = {
-            "params": {"drop_ratio_search": 0,"analyzer_name": "cn", "metric_type": "BM25"}
+            "params": {"drop_ratio_search": 0, "analyzer_name": "cn", "metric_type": "BM25"}
         }
         hits = self.client.search(
             collection_name=collection_name,
@@ -134,7 +137,8 @@ class MilvusManager:
         return hits[0] if hits else []
 
     # collection_name 目前默认配置文件的collection_name
-    def search_dense(self, query_vector: List[float], top_k: int = 5, collection_name: str = config_manager.config.milvus.collection_name) -> List[Dict]:
+    def search_dense(self, query_vector: List[float], top_k: int = 5,
+                     collection_name: str = config_manager.config.milvus.collection_name) -> List[Dict]:
         """稠密向量检索（语义匹配）"""
         if self.client.get_load_state(collection_name) != "Loaded":
             self.client.load_collection(collection_name)
@@ -147,21 +151,6 @@ class MilvusManager:
             output_fields=["text", "source_hash", "metadata"]
         )
         print(f"【调试】向量匹配 查询返回 hits 数量: {len(hits[0]) if hits else 0}")
-        return hits[0] if hits else []
-
-    def search_hybrid(self, collection_name: str, query: str, query_vector: List[float], top_k: int = 5) -> List[Dict]:
-        """混合检索：BM25（关键词）+ 稠密向量（语义）"""
-        if self.client.get_load_state(collection_name) != "Loaded":
-            self.client.load_collection(collection_name)
-
-        # 同时查两个字段
-        hits = self.client.search(
-            collection_name=collection_name,
-            data=[query, query_vector],  # [BM25文本, 向量]
-            anns_field=["sparse_bm25", "vector"],
-            limit=top_k,
-            output_fields=["text", "source_hash", "metadata"]
-        )
         return hits[0] if hits else []
 
     def get_all_collections(self) -> List[str]:

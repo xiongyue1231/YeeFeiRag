@@ -35,13 +35,13 @@ models:
 rag:
   llm_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
   llm_api_key: "sk-cbf8dce472b74ddfbf3210f7d52dd758"
-  #llm_model: "qwen-plus"
+  llm_model: "qwen-plus"
 
   vllm_base: "http://localhost:8000/v1"
   vllm_api_key: "43aa6570992d01fab078e157e07b4f52.ocKHwNGxhIBrDZD4"
-  #vllm_model: "models/Qwen/Qwen3.5-0.8B/"
+  vllm_model: "models/Qwen/Qwen3.5-0.8B/"
   temperature: 0.1
-  model: "qwen-plus"
+#  model: "qwen-plus"
 
   embedding_model: "bge-small-zh-v1.5"
   rerank_model: "bge-reranker-base"
@@ -63,3 +63,8 @@ multi_dialogue_rag:
   smith_debug: false  # 是否使用 Langsmith 进行debug查看
   console_debug: true  # 是否启用控制台日志查看
   thinking_in_context: false  # 是否将思考内容加入上下文历史对话
+
+redis :
+    host: "localhost"
+    port: 6379
+    SESSION_TTL: 604800

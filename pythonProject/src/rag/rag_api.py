@@ -6,7 +6,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from src.embed.embedding import VecEmbedding
 from src.database.milvus import MilvusManager
 from src.app_config.loder import ConfigLoader
-from src.core.utils import create_llm_client
+from src.core.utils import create_llm_client, load_rerank_model
 from src.prompts.templates import get_prompt_template
 import os
 from pathlib import Path
@@ -22,33 +22,12 @@ EMBEDDING_MODEL_PARAMS = {}
 sorted_content = {}
 sorted_records = {}
 
-
-def load_rerank_model(model_name: str, model_path: str) -> None:
-    global EMBEDDING_MODEL_PARAMS
-    """
-    加载重排序模型
-    :param model_name: 模型名称
-    :param model_path: 模型路径
-    :return:
-    """
-
-    current_dir = Path(__file__).parent.parent.resolve()
-    model_path = current_dir / "models" / "BAAI" / "bge-reranker-base"
-    model_path = str(model_path)
-    if model_name in ["bge-reranker-base"]:
-        EMBEDDING_MODEL_PARAMS["rerank_model"] = AutoModelForSequenceClassification.from_pretrained(model_path)
-        EMBEDDING_MODEL_PARAMS["rerank_tokenizer"] = AutoTokenizer.from_pretrained(model_path)
-        EMBEDDING_MODEL_PARAMS["rerank_model"].eval()
-        EMBEDDING_MODEL_PARAMS["rerank_model"].to(config_manager.config.deviceSettings.device)
-
-
 if config_manager.config.rag.use_rerank:
     model_name = config_manager.config.rag.rerank_model
     model_info = config_manager.config.models.rerank_model[model_name]
     model_path = model_info.local_url
-
     print(f"加载重排序模型： {model_name} ")
-    load_rerank_model(model_name, model_path)
+    EMBEDDING_MODEL_PARAMS = load_rerank_model(model_name, model_path)
 
 
 class Rag:
@@ -95,7 +74,8 @@ class Rag:
         word_search_response = self.milvus.search_bm25(query, collection_name=knowledge_record.category, top_k=5)
         # 语义检索
         embedding_vector = self.Vec.get_embedding(query)  # 编码
-        vector_search_response = self.milvus.search_dense(embedding_vector,collection_name=knowledge_record.category, top_k=5)
+        vector_search_response = self.milvus.search_dense(embedding_vector, collection_name=knowledge_record.category,
+                                                          top_k=5)
 
         if self.use_rrf:
             # rrf 融合排序算法
@@ -174,13 +154,6 @@ class Rag:
         # 后序提问 直接大模型回答
         else:
             pass
-            # normal_response = self.chat(
-            #     messages,
-            #     0.7, 0.9
-            # ).content
-            # messages.append({"role": "system", "content": normal_response})
-
-        # messages.append({"role": "system", "content": rag_response})
         return messages
 
     def chat(self, messages: List[Dict], top_p: float, temperature: float) -> Any:
