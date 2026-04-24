@@ -1,131 +1,105 @@
 import json
-import time
-from typing import Optional
-from redis import Redis
+import redis
+from typing import List, Tuple
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.messages import BaseMessage, messages_from_dict, messages_to_dict
+from langchain_core.messages import BaseMessage, message_to_dict, messages_from_dict, HumanMessage, AIMessage
 from src.app_config.loder import ConfigLoader
 
 config_manager = ConfigLoader()
 
+
 class RedisChatMessageHistory(BaseChatMessageHistory):
-    """基于 Redis 的聊天消息历史，支持 TTL 和会话内自增 seq_id"""
+    """
+    使用 Redis 存储聊天历史的消息历史类。
+    每条历史记录作为一个 JSON 字符串存储在 Redis 的字符串键中，键名为 f"chat_history:{session_id}"
+    """
 
-    def __init__(
-            self,
-            session_id: str,
-            redis_client: Redis,
-            ttl: Optional[int] = 3600,  # 默认 TTL 1小时
-            key_prefix: str = "chat_history"
-    ):
+    def __init__(self, session_id: str, redis_client: redis.Redis, key_prefix: str = "chat_history:",
+                 ttl: int = config_manager.config.redis.SESSION_TTL):
         self.session_id = session_id
-        self.redis = redis_client
+        self.redis_client = redis_client
+        self.key = f"{key_prefix}{session_id}"
+        self.seq_key = f"{self.key}:seq"  # 计数器键
         self.ttl = ttl
-        self.key_prefix = key_prefix
 
-        # Redis key: chat_history:{session_id}
-        self.history_key = f"{self.key_prefix}:{self.session_id}"
-        # 序列号 key: chat_history:{session_id}:seq
-        self.seq_key = f"{self.history_key}:seq"
+    def _get_next_seq_id(self) -> int:
+        """通过 Redis INCR 获取下一个序列号，并设置 TTL（若启用）"""
+        next_id = self.redis_client.incr(self.seq_key)
+        if self.ttl is not None:
+            self.redis_client.expire(self.seq_key, self.ttl)
+        return next_id
 
     @property
-    def messages(self) -> list[BaseMessage]:
-        """获取所有消息，按 seq_id 排序"""
-        # 获取所有消息（Hash 结构，field 为 seq_id）
-        raw_messages = self.redis.hgetall(self.history_key)
-        if not raw_messages:
+    def messages(self) -> List[BaseMessage]:
+        """从 Redis 读取并返回消息列表"""
+
+        # print(f" type: {self.redis_client.type(self.key)}")
+        entries = self._get_all_entries()
+        # 从每个条目中提取 message 字段
+        msg_dicts = [entry["message"] for entry in entries]
+        return messages_from_dict(msg_dicts)
+
+    def get_messages_with_seq_id(self) -> List[Tuple[int, BaseMessage]]:
+        """返回带有序号的消息列表，格式：[(seq_id, message), ...]"""
+        entries = self._get_all_entries()
+        result = []
+        for entry in entries:
+            msg = messages_from_dict([entry["message"]])[0]
+            result.append((entry["seq_id"], msg))
+        return result
+
+    def _get_all_entries(self):
+        """内部方法：读取完整的带 seq_id 的条目列表"""
+        data = self.redis_client.get(self.key)
+        if not data:
             return []
-
-        # 按 seq_id 排序并反序列化
-        sorted_items = sorted(raw_messages.items(), key=lambda x: int(x[0]))
-        message_dicts = [json.loads(msg.decode('utf-8')) for _, msg in sorted_items]
-
-        return messages_from_dict(message_dicts)
+        return json.loads(data)
 
     def add_message(self, message: BaseMessage) -> None:
-        """添加消息，自动分配自增 seq_id"""
-        # 获取下一个 seq_id（原子自增）
-        seq_id = self.redis.incr(self.seq_key)
-
-        # 序列化消息
-        message_dict = messages_to_dict([message])[0]
-        message_data = json.dumps(message_dict, ensure_ascii=False)
-
-        # 使用 Pipeline 保证原子性
-        pipe = self.redis.pipeline()
-
-        # 存储消息到 Hash
-        pipe.hset(self.history_key, str(seq_id), message_data)
-
-        # 设置 TTL（如果配置了）
-        if self.ttl:
-            pipe.expire(self.history_key, self.ttl)
-            pipe.expire(self.seq_key, self.ttl)
-
-        pipe.execute()
+        seq_id = self._get_next_seq_id()
+        msg_dict = message_to_dict(message)
+        entry = {"seq_id": seq_id, "message": msg_dict}
+        # 读取现有列表，追加新条目
+        entries = self._get_all_entries()
+        entries.append(entry)
+        # 写回 Redis 并刷新 TTL
+        self.redis_client.set(self.key, json.dumps(entries))
+        if self.ttl is not None:
+            self.redis_client.expire(self.key, self.ttl)
 
     def clear(self) -> None:
-        """清空会话历史"""
-        pipe = self.redis.pipeline()
-        pipe.delete(self.history_key)
-        pipe.delete(self.seq_key)
-        pipe.execute()
-
-    def get_next_seq_id(self) -> int:
-        """获取下一个 seq_id（不实际递增）"""
-        current = self.redis.get(self.seq_key)
-        return int(current.decode('utf-8')) + 1 if current else 1
-
-    def get_message_by_seq(self, seq_id: int) -> Optional[BaseMessage]:
-        """通过 seq_id 获取单条消息"""
-        raw = self.redis.hget(self.history_key, str(seq_id))
-        if not raw:
-            return None
-        return messages_from_dict([json.loads(raw.decode('utf-8'))])[0]
+        """清除当前会话的所有历史消息"""
+        self.redis_client.delete(self.key)
 
 
-# 全局 Redis 连接和 store（替代原来的内存 store）
-_redis_client: Optional[Redis] = None
-_store: dict[str, RedisChatMessageHistory] = {}  # 本地缓存，减少 Redis 连接创建
+# ---------- 初始化 Redis 客户端（根据实际环境配置连接参数） ----------
+redis_client = redis.Redis(
+    host=config_manager.config.redis.host,  # Redis 主机地址
+    port=config_manager.config.redis.port,  # Redis 端口
+    db=0,  # 使用的数据库编号
+    decode_responses=True  # 自动将返回的字节串解码为字符串
+)
 
 
-def init_redis(host: str = config_manager.config.redis.host, port: int = config_manager.config.redis.port, db: int = 0, **kwargs):
-    """初始化全局 Redis 连接"""
-    global _redis_client
-    _redis_client = Redis(host=host, port=port, db=db, decode_responses=False, **kwargs)
-    return _redis_client
+def get_session_history(session_id: str) -> BaseChatMessageHistory:
+    """工厂函数：根据 session_id 返回对应的 Redis 聊天历史实例"""
+    return RedisChatMessageHistory(session_id=session_id, redis_client=redis_client)
 
 
-def get_session_history(
-        session_id: str,
-        ttl: Optional[int] = 3600,
-        redis_client: Optional[Redis] = None
-) -> BaseChatMessageHistory:
-    """
-    获取会话历史（Redis 持久化版本）
+if __name__ == "__main__":
+    # 创建一个会话历史对象
+    session_id = "user_123"
+    session_history = get_session_history(session_id)
+    session_history.clear()
 
-    Args:
-        session_id: 会话 ID
-        ttl: 会话过期时间（秒），默认 3600
-        redis_client: 可选的 Redis 客户端，未提供则使用全局客户端
+    print("=== 添加消息 ===")
+    session_history.add_message(HumanMessage(content="这是用户问题？"))
+    session_history.add_message(AIMessage(content="这是AI回复。"))
 
-    Returns:
-        RedisChatMessageHistory 实例
-    """
-    global _redis_client
+    print("\n=== 仅消息内容（兼容原有逻辑）===")
+    for msg in session_history.messages:
+        print(f"{msg.type}: {msg.content}")
 
-    client = redis_client or _redis_client
-    if client is None:
-        raise RuntimeError(
-            "Redis client not initialized. Call init_redis() first or pass redis_client."
-        )
-
-    # 复用已创建的实例（可选优化）
-    if session_id not in _store:
-        _store[session_id] = RedisChatMessageHistory(
-            session_id=session_id,
-            redis_client=client,
-            ttl=ttl
-        )
-
-    return _store[session_id]
+    print("\n=== 带 seq_id 的消息 ===")
+    for seq_id, msg in session_history.get_messages_with_seq_id():
+        print(f"seq_id={seq_id}, {msg.type}: {msg.content}")

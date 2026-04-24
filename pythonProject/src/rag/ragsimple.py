@@ -17,7 +17,7 @@ from src.prompts.templates import get_prompt_template
 from src.core.utils import create_llm_langchain
 from src.rag.ragbase import HybridRetriever
 from operator import itemgetter
-from langchain_community.chat_message_histories import RedisChatMessageHistory
+from src.rag.MultiDialogueRag import get_session_history
 # ---------- 加载配置 ----------
 config_manager = ConfigLoader()
 device = config_manager.config.deviceSettings.device
@@ -85,31 +85,11 @@ def create_rag_chain(knowledge_id: int):
 
     return chain
 
-
-# ---------- 带历史管理的对话包装器 ----------
-# 内存存储历史，生产环境可用 Redis 等持久化
-store = {}
-
-
-def get_session_history(session_id: str) -> BaseChatMessageHistory:
-    if session_id not in store:
-        store[session_id] = ChatMessageHistory()
-    return store[session_id]
-
-
 def create_conversational_rag(knowledge_id: int):
     """
     返回带消息历史的对话 RAG 实例，可直接调用 .invoke() 进行多轮对话。
     """
     rag_chain = create_rag_chain(knowledge_id)
-
-    # 定义输入输出转换
-    # def _prepare_input(input_dict: Dict) -> Dict:
-    #     # 从 history 中提取消息列表（LangChain 消息格式）
-    #     return {
-    #         "original_input": input_dict["input"],
-    #         "chat_history": input_dict.get("chat_history", []),
-    #     }
 
     conversational_rag = RunnableWithMessageHistory(
         rag_chain,
@@ -129,7 +109,7 @@ if __name__ == "__main__":
 
     # 模拟多轮对话
     session_id = "user_123"
-
+    session_history = get_session_history(session_id).clear()
     # 第一轮
     response1 = conversational_rag.invoke(
         {"input": "这是毕业论文？"},
@@ -146,5 +126,5 @@ if __name__ == "__main__":
 
     # 查看历史消息
     print("\n对话历史：")
-    for msg in store[session_id].messages:
+    for msg in get_session_history(session_id).messages:
         print(f"{msg.type}: {msg.content}")
