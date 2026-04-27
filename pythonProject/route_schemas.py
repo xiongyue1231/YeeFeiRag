@@ -78,6 +78,23 @@ class DocumentResponse(BaseModel):
 class RAGRequest(BaseModel):
     knowledge_id: int
     message: List[Dict]
+    user_id: str = Field(description="用户ID")
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(description="用户名")
+    password: str = Field(description="密码")
+
+
+class LoginResponse(BaseModel):
+    request_id: str = Field(description="请求ID")
+    user_id: str = Field(description="用户ID")
+    username: str = Field(description="用户名")
+    token: str = Field(description="JWT令牌")
+    response_code: int = Field(description="响应代码，用于表示成功或错误状态")
+    response_msg: str = Field(description="响应信息，详细描述响应状态或错误信息")
+    process_status: str = Field(description="处理状态，例如 'completed'、'pending' 或 'failed'")
+    processing_time: float = Field(description="处理请求的耗时（秒）")
 
 
 class RAGResponse(BaseModel):
