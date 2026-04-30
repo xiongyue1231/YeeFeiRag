@@ -33,8 +33,8 @@ class HybridRetriever(BaseRetriever):
     chunk_candidate: int = 5
     knowledge_id: int = 1  # 默认知识库 ID，可外部传入
 
-    class Config:
-        arbitrary_types_allowed = True
+    # class Config:
+    #     arbitrary_types_allowed = True
 
     def _get_relevant_documents(self, query: str) -> List[Document]:
         # 获取知识库对应的 collection 名称
