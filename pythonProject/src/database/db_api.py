@@ -30,6 +30,9 @@ else:
 # 创建 Base 类
 Base = declarative_base()
 
+# 每次自动创建会话
+Session = sessionmaker(bind=engine)
+
 
 # ORM
 # 定义 knowledge_database 表
@@ -70,6 +73,23 @@ class KnowledgeDocument(Base):
     # 与 KnowledgeDatabase 表的关系
     knowledge = relationship("KnowledgeDatabase", back_populates="documents")
 
+
+# 定义 user 表
+class User(Base):
+    __tablename__ = 'user'
+
+    user_id = Column(Integer, primary_key=True, autoincrement=True, comment='用户id')  # 主键，自动递增
+    username = Column(String(255), unique=True, nullable=False, comment='用户名')  # 用户名
+    password = Column(String(255), nullable=False, comment='密码')  # 密码
+    email = Column(String(255), unique=True, nullable=False, comment='邮箱')  # 邮箱
+    create_dt = Column(DateTime, default=datetime.utcnow, comment='创建时间')  # 创建时间
+    update_dt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='更新时间')  # 更新时间
+
+    def __str__(self):
+        return (f"User(user_id={self.user_id}, "
+                f"username='{self.username}', email='{self.email}', "
+                f"create_dt={self.create_dt}, "
+                f"update_dt={self.update_dt})")
 
 # 自动创建表，如果不存在
 Base.metadata.create_all(engine)
