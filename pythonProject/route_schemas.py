@@ -78,11 +78,12 @@ class DocumentResponse(BaseModel):
 class RAGRequest(BaseModel):
     knowledge_id: int
     message: List[Dict]
+    session_id: Optional[str] = None
 
 
 class RAGResponse(BaseModel):
     request_id: str = Field(description="请求ID")
-    message: List[Dict]
+    message: Union[List[Dict], str]
     response_code: int = Field(description="响应代码，用于表示成功或错误状态")
     response_msg: str = Field(description="响应信息，详细描述响应状态或错误信息")
     process_status: str = Field(description="处理状态，例如 'completed'、'pending' 或 'failed'")

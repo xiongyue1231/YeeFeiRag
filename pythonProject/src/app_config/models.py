@@ -82,6 +82,17 @@ class RedisConfig(BaseModel):
     SESSION_TTL: int = 604800
 
 
+class MultiDialogueRagConfig(BaseModel):
+    """多轮对话配置"""
+    estimate_token_fun: str = "avg"
+    llm_max_token: int = 1024
+    cut_dialogue_scale: int = 2
+    max_token_threshold: float = 1.01
+    smith_debug: bool = False
+    console_debug: bool = True
+    thinking_in_context: bool = False
+
+
 class AppConfig(BaseModel):
     """应用主配置 - 更新版"""
     milvus: MilvusConfig
@@ -90,3 +101,4 @@ class AppConfig(BaseModel):
     deviceSettings: DeviceConfig
     models: ModelsConfig
     redis: RedisConfig
+    multi_dialogue_rag: MultiDialogueRagConfig

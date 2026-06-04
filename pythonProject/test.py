@@ -18,14 +18,69 @@
 # model_dir = snapshot_download('BAAI/bge-small-zh-v1.5',local_dir='./models/BAAI/bge-small-zh-v1.5')
 
 
+
+# import torch
+# from diffusers import AutoencoderKLWan, WanPipeline
+# from diffusers.utils import export_to_video
+# import os
+#
+# model_id = "src/models/Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
+#
+# vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", torch_dtype=torch.float16)
+# pipe = WanPipeline.from_pretrained(model_id, vae=vae, torch_dtype=torch.float16)
+# pipe.enable_model_cpu_offload()
+# # pipe.to("cuda")
+# pipe.vae.enable_slicing()
+#
+# prompt = "A cat walks on the grass, realistic"
+# negative_prompt = "Bright tones, overexposed..."
+#
+# print("开始生成...")
+# output = pipe(
+#     prompt=prompt,
+#     negative_prompt=negative_prompt,
+#     height=256,
+#     width=256,
+#     num_frames=49,
+#     guidance_scale=5.0,
+#     num_inference_steps=20,
+# ).frames[0]
+# print("生成完成，开始导出视频...")
+#
+# # 指定完整绝对路径，避免找不到
+# save_path = os.path.join(os.getcwd(), "output.mp4")
+# print(f"保存到: {save_path}")
+#
+# try:
+#     export_to_video(output, save_path, fps=15)
+#     print(f"导出成功！文件大小: {os.path.getsize(save_path) / 1024 / 1024:.2f} MB")
+# except Exception as e:
+#     print(f"导出失败: {e}")
+#     import traceback
+#     traceback.print_exc()
+
+# import os
+#
+# # 检查当前工作目录
+# print(f"当前工作目录: {os.getcwd()}")
+#
+# # 检查文件是否存在
+# output_path = "output.mp4"
+# print(f"文件存在: {os.path.exists(output_path)}")
+# print(f"绝对路径: {os.path.abspath(output_path)}")
+#
+# # 列出当前目录下所有 mp4 文件
+# mp4_files = [f for f in os.listdir('.') if f.endswith('.mp4')]
+# print(f"当前目录 MP4 文件: {mp4_files}")
+
+
 #模型下载
 from modelscope import snapshot_download
-model_dir = snapshot_download('BAAI/bge-reranker-base', local_dir='src/models/BAAI/bge-reranker-base')
+# model_dir = snapshot_download('Wan-AI/Wan2.1-T2V-1.3B-Diffusers', local_dir='src/models/Wan-AI/Wan2.1-T2V-1.3B-Diffusers')
 
-from .src.embed.embedding import VecEmbedding
-import re
-from typing import List, Dict, Tuple, Union
-import uuid
+# model_dir = snapshot_download('Wan-AI/Wan2.2-TI2V-5B-Diffusers', local_dir='src/models/Wan-AI/Wan2.2-TI2V-5B-Diffusers')
+
+
 
 #
 # class OCRChunker:

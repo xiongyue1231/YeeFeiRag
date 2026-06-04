@@ -67,4 +67,4 @@ multi_dialogue_rag:
 redis :
     host: "localhost"
     port: 6379
-    SESSION_TTL: 604800
+    SESSION_TTL: 3600

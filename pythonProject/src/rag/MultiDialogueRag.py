@@ -98,7 +98,7 @@ def init_redis(host: str = config_manager.config.redis.host, port: int = config_
 
 def get_session_history(
         session_id: str,
-        ttl: Optional[int] = 3600,
+        ttl: Optional[int] = config_manager.config.redis.SESSION_TTL,
         redis_client: Optional[Redis] = None
 ) -> BaseChatMessageHistory:
     """
@@ -115,6 +115,7 @@ def get_session_history(
     global _redis_client
 
     client = redis_client or _redis_client
+    # 程序运行时报错
     if client is None:
         raise RuntimeError(
             "Redis client not initialized. Call init_redis() first or pass redis_client."

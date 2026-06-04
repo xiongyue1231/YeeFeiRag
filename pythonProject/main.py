@@ -14,6 +14,7 @@ from src.database.db_api import (
 from src.analysis.file_handler import FileHandler
 from src.analysis.processor import DocumentProcessor
 from src.rag.rag_api import Rag
+from src.rag.ragsimple import create_conversational_rag
 
 app = FastAPI()
 from src.app_config.loder import ConfigLoader
@@ -198,7 +199,12 @@ async def add_document(
 @app.post("/chat")
 def chat(req: RAGRequest) -> RAGResponse:
     start_time = time.time()
-    message = Rag().chat_with_rag(req.knowledge_id, req.message)
+    session_id = req.session_id or "default_session"
+    conversational_rag = create_conversational_rag(req.knowledge_id)
+    message = conversational_rag.invoke(
+        {"input": req.message[-1]["content"]},
+        config={"configurable": {"session_id": session_id}}
+    )
 
     return RAGResponse(
         request_id=str(uuid.uuid4()),
