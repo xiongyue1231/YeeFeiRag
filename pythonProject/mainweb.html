@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YeeFei RAG 知识库管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        /* Tab Navigation */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Main Card */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 500;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        /* Chat Interface */
+        .chat-container {
+            display: flex;
+            gap: 20px;
+            height: 600px;
+        }
+
+        .chat-sidebar {
+            width: 250px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .chat-sidebar h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .knowledge-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .knowledge-item:hover {
+            border-color: #667eea;
+        }
+
+        .knowledge-item.active {
+            border-color: #667eea;
+            background: #e8eeff;
+        }
+
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 15px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .message.error {
+            align-self: flex-start;
+            background: #ffc107;
+            color: #333;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .chat-input button {
+            padding: 12px 25px;
+            border-radius: 25px;
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success {
+            border-left: 4px solid #28a745;
+        }
+
+        .toast.error {
+            border-left: 4px solid #dc3545;
+        }
+
+        .toast.info {
+            border-left: 4px solid #667eea;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* File Upload */
+        .file-upload {
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .file-upload:hover {
+            background: #e8eeff;
+            border-color: #764ba2;
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .chat-container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .chat-sidebar {
+                width: 100%;
+            }
+
+            .tabs {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 YeeFei RAG</h1>
+            <p>智能知识库管理系统</p>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="knowledge">知识库管理</button>
+            <button class="tab-btn" data-tab="document">文档管理</button>
+            <button class="tab-btn" data-tab="chat">AI 聊天</button>
+        </div>
+
+        <!-- Knowledge Base Tab -->
+        <div id="knowledge" class="tab-content active">
+            <div class="card">
+                <h2 class="card-title">创建知识库</h2>
+                <form id="createKnowledgeForm">
+                    <div class="form-group">
+                        <label>知识库名称</label>
+                        <input type="text" id="kbName" placeholder="请输入知识库名称" required>
+                    </div>
+                    <div class="form-group">
+                        <label>分类</label>
+                        <input type="text" id="kbCategory" placeholder="请输入分类" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">创建知识库</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">知识库列表</h2>
+                <div class="table-container">
+                    <table id="knowledgeTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>名称</th>
+                                <th>分类</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="knowledgeTableBody">
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    <h3>暂无知识库</h3>
+                                    <p>请在上方创建知识库</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <button class="btn btn-primary" style="margin-top: 15px;" onclick="loadKnowledgeBases()">刷新列表</button>
+            </div>
+        </div>
+
+        <!-- Document Tab -->
+        <div id="document" class="tab-content">
+            <div class="card">
+                <h2 class="card-title">上传文档</h2>
+                <form id="uploadDocumentForm">
+                    <div class="form-group">
+                        <label>选择知识库</label>
+                        <select id="docKnowledgeId" required>
+                            <option value="">请先创建知识库</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>文档标题</label>
+                        <input type="text" id="docTitle" placeholder="请输入文档标题" required>
+                    </div>
+                    <div class="form-group">
+                        <label>文档分类</label>
+                        <input type="text" id="docCategory" placeholder="请输入文档分类" required>
+                    </div>
+                    <div class="form-group">
+                        <label>选择文件</label>
+                        <div class="file-upload" onclick="document.getElementById('docFile').click()">
+                            <p>📁 点击选择文件 或 拖拽文件到此处</p>
+                            <p style="font-size: 12px; color: #999; margin-top: 10px;">支持 PDF, DOCX, TXT, 图片等格式</p>
+                            <input type="file" id="docFile" required>
+                        </div>
+                        <div id="fileName" style="margin-top: 10px; color: #667eea;"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">上传文档</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">文档列表</h2>
+                <div class="table-container">
+                    <table id="documentTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>标题</th>
+                                <th>分类</th>
+                                <th>知识库ID</th>
+                                <th>文件类型</th>
+                                <th>创建时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="documentTableBody">
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <h3>暂无文档</h3>
+                                    <p>请先创建知识库，然后上传文档</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <button class="btn btn-primary" style="margin-top: 15px;" onclick="loadDocuments()">刷新列表</button>
+            </div>
+        </div>
+
+        <!-- Chat Tab -->
+        <div id="chat" class="tab-content">
+            <div class="card">
+                <div class="chat-container">
+                    <div class="chat-sidebar">
+                        <h3>📚 选择知识库</h3>
+                        <div id="chatKnowledgeList">
+                            <div class="empty-state">
+                                <p>暂无知识库</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-main">
+                        <div class="chat-header">
+                            <span id="currentKnowledge">请选择知识库开始对话</span>
+                        </div>
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="message assistant">
+                                👋 您好！我是 YeeFei RAG 智能助手。请先选择一个知识库，然后开始提问。
+                            </div>
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" id="chatInput" placeholder="请输入您的问题..." disabled>
+                            <button class="btn btn-primary" id="sendBtn" disabled onclick="sendMessage()">发送</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // Global State
+        let currentKnowledgeBase = null;
+        let knowledgeBases = [];
+        let sessionId = null;
+
+        // Tab Switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Toast Notifications
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // File Upload Preview
+        document.getElementById('docFile').addEventListener('change', function(e) {
+            if (this.files[0]) {
+                document.getElementById('fileName').textContent = '已选择: ' + this.files[0].name;
+            }
+        });
+
+        // =================== Knowledge Base APIs ===================
+
+        // Create Knowledge Base
+        document.getElementById('createKnowledgeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('kbName').value;
+            const category = document.getElementById('kbCategory').value;
+
+            try {
+                const response = await fetch('/v1/knowledge_base', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, category })
+                });
+                const data = await response.json();
+
+                if (data.response_code === 200) {
+                    showToast('知识库创建成功！', 'success');
+                    document.getElementById('createKnowledgeForm').reset();
+                    loadKnowledgeBases();
+                } else {
+                    showToast(data.response_msg || '创建失败', 'error');
+                }
+            } catch (error) {
+                showToast('请求失败: ' + error.message, 'error');
+            }
+        });
+
+        // Load Knowledge Bases
+        async function loadKnowledgeBases() {
+            try {
+                const response = await fetch('/v1/knowledge_base', {
+                    method: 'GET'
+                });
+                const data = await response.json();
+
+                if (data.response_code === 200 && data.data) {
+                    knowledgeBases = data.data;
+                    renderKnowledgeTable();
+                    updateKnowledgeSelect();
+                    updateChatKnowledgeList();
+                }
+            } catch (error) {
+                console.error('加载知识库失败:', error);
+                // Mock data for display
+                knowledgeBases = [];
+                renderKnowledgeTable();
+            }
+        }
+
+        // Render Knowledge Table
+        function renderKnowledgeTable() {
+            const tbody = document.getElementById('knowledgeTableBody');
+            if (knowledgeBases.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            <h3>暂无知识库</h3>
+                            <p>请在上方创建知识库</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = knowledgeBases.map(kb => `
+                <tr>
+                    <td>${kb.knowledge_id}</td>
+                    <td>${kb.title}</td>
+                    <td>${kb.category}</td>
+                    <td>${kb.create_dt ? new Date(kb.create_dt).toLocaleString() : '-'}</td>
+                    <td>
+                        <button class="btn btn-danger" onclick="deleteKnowledgeBase(${kb.knowledge_id})">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Delete Knowledge Base
+        async function deleteKnowledgeBase(knowledgeId) {
+            if (!confirm('确定要删除这个知识库吗？')) return;
+
+            try {
+                const response = await fetch(`/v1/knowledge_base?knowledge_id=${knowledgeId}&token=dummy`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (data.response_code === 200) {
+                    showToast('知识库删除成功！', 'success');
+                    loadKnowledgeBases();
+                } else {
+                    showToast(data.response_msg || '删除失败', 'error');
+                }
+            } catch (error) {
+                showToast('请求失败: ' + error.message, 'error');
+            }
+        }
+
+        // Update Knowledge Select in Document Tab
+        function updateKnowledgeSelect() {
+            const select = document.getElementById('docKnowledgeId');
+            if (knowledgeBases.length === 0) {
+                select.innerHTML = '<option value="">请先创建知识库</option>';
+                return;
+            }
+
+            select.innerHTML = knowledgeBases.map(kb =>
+                `<option value="${kb.knowledge_id}">${kb.title} (${kb.category})</option>`
+            ).join('');
+        }
+
+        // Update Chat Knowledge List
+        function updateChatKnowledgeList() {
+            const container = document.getElementById('chatKnowledgeList');
+            if (knowledgeBases.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>暂无知识库</p></div>';
+                return;
+            }
+
+            container.innerHTML = knowledgeBases.map(kb => `
+                <div class="knowledge-item" onclick="selectKnowledgeForChat(${kb.knowledge_id}, '${kb.title}')">
+                    <strong>${kb.title}</strong>
+                    <br><small>${kb.category}</small>
+                </div>
+            `).join('');
+        }
+
+        // =================== Document APIs ===================
+
+        // Upload Document
+        document.getElementById('uploadDocumentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const knowledgeId = document.getElementById('docKnowledgeId').value;
+            if (!knowledgeId) {
+                showToast('请选择知识库', 'error');
+                return;
+            }
+
+            const title = document.getElementById('docTitle').value;
+            const category = document.getElementById('docCategory').value;
+            const file = document.getElementById('docFile').files[0];
+
+            if (!file) {
+                showToast('请选择文件', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('knowledge_id', knowledgeId);
+            formData.append('title', title);
+            formData.append('category', category);
+            formData.append('file', file);
+            formData.append('background_tasks', 'true');
+
+            try {
+                showToast('文件上传中...', 'info');
+                const response = await fetch('/v1/document', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.response_code === 200) {
+                    showToast('文档上传成功，正在处理中...', 'success');
+                    document.getElementById('uploadDocumentForm').reset();
+                    document.getElementById('fileName').textContent = '';
+                    loadDocuments();
+                } else {
+                    showToast(data.response_msg || '上传失败', 'error');
+                }
+            } catch (error) {
+                showToast('请求失败: ' + error.message, 'error');
+            }
+        });
+
+        // Load Documents
+        async function loadDocuments() {
+            try {
+                const response = await fetch('/v1/document', {
+                    method: 'GET'
+                });
+                const data = await response.json();
+
+                if (data.response_code === 200 && data.data) {
+                    renderDocumentTable(data.data);
+                }
+            } catch (error) {
+                console.error('加载文档失败:', error);
+                // Keep existing data
+            }
+        }
+
+        // Render Document Table
+        function renderDocumentTable(documents) {
+            const tbody = document.getElementById('documentTableBody');
+            if (!documents || documents.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <h3>暂无文档</h3>
+                            <p>请先创建知识库，然后上传文档</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = documents.map(doc => `
+                <tr>
+                    <td>${doc.document_id}</td>
+                    <td>${doc.title}</td>
+                    <td>${doc.category}</td>
+                    <td>${doc.knowledge_id}</td>
+                    <td>${doc.file_type || '-'}</td>
+                    <td>${doc.create_dt ? new Date(doc.create_dt).toLocaleString() : '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // =================== Chat APIs ===================
+
+        // Select Knowledge for Chat
+        function selectKnowledgeForChat(knowledgeId, title) {
+            currentKnowledgeBase = knowledgeId;
+            sessionId = 'session_' + Date.now();
+
+            // Update UI
+            document.querySelectorAll('.knowledge-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.knowledge-item').classList.add('active');
+
+            document.getElementById('currentKnowledge').textContent = `当前知识库: ${title}`;
+            document.getElementById('chatInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('chatInput').focus();
+
+            showToast(`已选择知识库: ${title}`, 'success');
+        }
+
+        // Send Message
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+            if (!currentKnowledgeBase) {
+                showToast('请先选择知识库', 'error');
+                return;
+            }
+
+            // Add user message
+            addMessage(message, 'user');
+            input.value = '';
+
+            // Show loading
+            const loadingMsg = addMessage('正在思考中...', 'assistant');
+            loadingMsg.innerHTML = '<div class="loading"></div> 正在思考中...';
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        knowledge_id: currentKnowledgeBase,
+                        message: [{ role: 'user', content: message }],
+                        session_id: sessionId
+                    })
+                });
+
+                const data = await response.json();
+
+                // Remove loading message
+                loadingMsg.remove();
+
+                if (data.response_code === 200) {
+                    addMessage(data.message, 'assistant');
+                } else {
+                    addMessage(data.response_msg || '回答生成失败', 'error');
+                }
+            } catch (error) {
+                loadingMsg.remove();
+                addMessage('请求失败: ' + error.message, 'error');
+            }
+        }
+
+        // Add Message to Chat
+        function addMessage(content, sender) {
+            const container = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
+            div.textContent = content;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            return div;
+        }
+
+        // Enter key to send
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // =================== Initialization ===================
+
+        // Initialize
+        async function init() {
+            await loadKnowledgeBases();
+            await loadDocuments();
+        }
+
+        init();
+    </script>
+</body>
+</html>
