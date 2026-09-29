@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import BinaryIO, Union
 import io
-from content_type import ContentType
+from src.analysis.content_type import ContentType
 from typing import List, Tuple
 import zipfile
 from xml.etree import ElementTree as ET

@@ -3,13 +3,13 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from datetime import datetime
 import pymysql
 import yaml  # type: ignore
-from ..app_config.loder import ConfigLoader
+from src.app_config.loder import ConfigLoader
 
 config_manager = ConfigLoader()
 
 db_config = config_manager.config.database
 db_type = db_config.engine
-
+print(db_type)
 if db_type == "sqlite":
     # SQLite 使用文件路径
     db_path = db_config.path
@@ -57,6 +57,9 @@ class KnowledgeDatabase(Base):
                 f"update_dt={self.update_dt})")
 
 
+
+
+
 # 定义 knowledge_document 表
 class KnowledgeDocument(Base):
     __tablename__ = 'knowledge_document'
@@ -93,5 +96,12 @@ class User(Base):
 
 # 自动创建表，如果不存在
 Base.metadata.create_all(engine)
-# 每次自动创建会话
-Session = sessionmaker(bind=engine)
+
+
+
+def get_all_knowledge_bases():
+    """查询所有知识库（按创建时间倒序）"""
+    with Session() as session:
+        return session.query(KnowledgeDatabase).order_by(
+            KnowledgeDatabase.create_dt.desc()
+        ).all()

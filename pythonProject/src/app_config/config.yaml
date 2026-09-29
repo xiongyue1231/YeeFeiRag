@@ -16,7 +16,7 @@ milvus:
   collection_name: "current_collection_test"
 
 deviceSettings:
-  device: "cpu"
+  device: "cuda"
 
 
 models:

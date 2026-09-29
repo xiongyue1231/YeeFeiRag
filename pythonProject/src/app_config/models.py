@@ -49,7 +49,7 @@ class RagConfig(BaseModel):
 
 class DeviceConfig(BaseModel):
     """设备配置"""
-    device: str = "cpu"
+    device: str = "cuda"
 
 
 # ========== 第一层：单个模型配置 ==========

@@ -1,7 +1,6 @@
 from src.embed.chuck import OCRChuck
-from file_handler import FileHandler
+from src.analysis.file_handler import FileHandler
 from src.database.milvus import MilvusManager
-from content_type import ContentType
 from src.app_config.loder import ConfigLoader
 
 

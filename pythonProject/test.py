@@ -17,7 +17,8 @@
 # from modelscope import snapshot_download
 # model_dir = snapshot_download('BAAI/bge-small-zh-v1.5',local_dir='./models/BAAI/bge-small-zh-v1.5')
 
-
+from modelscope import snapshot_download
+model_dir = snapshot_download('Qwen/Qwen3.5-0.8B',local_dir='./src/models/Qwen/Qwen3.5-0.8B')
 
 # import torch
 # from diffusers import AutoencoderKLWan, WanPipeline

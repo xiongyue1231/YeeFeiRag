@@ -615,7 +615,6 @@
         let currentKnowledgeBase = null;
         let knowledgeBases = [];
         let sessionId = null;
-
         // Tab Switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -726,7 +725,7 @@
             if (!confirm('确定要删除这个知识库吗？')) return;
 
             try {
-                const response = await fetch(`/v1/knowledge_base?knowledge_id=${knowledgeId}&token=dummy`, {
+                const response = await fetch(`/v1/knowledge_base/${knowledgeId}`, {
                     method: 'DELETE'
                 });
                 const data = await response.json();
