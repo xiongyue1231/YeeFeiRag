@@ -45,8 +45,8 @@ def create_llm_langchain(config: RagConfig) -> ChatOpenAI:
     params = _resolve_llm_params(config)
     return ChatOpenAI(
         model=params["model"],
-        temperature=0.1,
-        top_p=0.9,
+        temperature=0.8,
+        top_p=0.5,
         api_key=params["api_key"],
         base_url=params["base_url"],
         timeout=60,            # 单次请求超时 60s，避免 vLLM 冷加载时无限等待

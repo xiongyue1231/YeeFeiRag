@@ -92,7 +92,12 @@ _store: dict[str, RedisChatMessageHistory] = {}  # 本地缓存，减少 Redis �
 def init_redis(host: str = config_manager.config.redis.host, port: int = config_manager.config.redis.port, db: int = 0, **kwargs):
     """初始化全局 Redis 连接"""
     global _redis_client
-    _redis_client = Redis(host=host, port=port, db=db, decode_responses=False, **kwargs)
+    # socket_timeout：Redis 僵死时快速报错，避免整个链路无限挂起
+    _redis_client = Redis(
+        host=host, port=port, db=db, decode_responses=False,
+        socket_timeout=10, socket_connect_timeout=10,
+        **kwargs
+    )
     return _redis_client
 
 
@@ -117,7 +122,7 @@ def get_session_history(
     # 懒加载：未显式初始化时，自动按配置创建 Redis 连接
     if _redis_client is None and redis_client is None:
         init_redis()
-
+    print("redis初始化完成")
     client = redis_client or _redis_client
     if client is None:
         raise RuntimeError(
@@ -131,5 +136,5 @@ def get_session_history(
             redis_client=client,
             ttl=ttl
         )
-
+    print("本地缓存完成")
     return _store[session_id]

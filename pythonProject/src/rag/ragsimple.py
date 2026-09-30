@@ -171,7 +171,7 @@ def create_rag_chain(knowledge_id: int):
             **input_dict,
             "chat_history": compressed_history
         }
-
+    print("历史对话压缩处理函数完成")
     # 输入字典需包含：question（原始问题）、chat_history（历史消息列表）
     chain = (
             RunnableLambda(process_chat_history)
@@ -186,7 +186,45 @@ def create_rag_chain(knowledge_id: int):
             | llm
             | StrOutputParser()
     )
+    print("构建 RAG 链完成")
 
+    # ---------- 执行阶段调试 ----------
+    def _debug_rewriter(input_dict: dict) -> str:
+        print(f"【链调试】问题改写开始: {input_dict['input']}", flush=True)
+        result = query_rewriter.invoke(input_dict)
+        print(f"【链调试】问题改写完成: {result}", flush=True)
+        return result
+
+    def _debug_retrieve(input_dict: dict) -> List[Document]:
+        print(f"【链调试】检索开始", flush=True)
+        docs = retriever.invoke(input_dict["rewritten_query"])
+        print(f"【链调试】检索完成，命中 {len(docs)} 条文档", flush=True)
+        return docs
+
+    def _debug_prompt(messages):
+        print(f"【链调试】生成回答开始，提示词长度: {len(str(messages))}", flush=True)
+        return messages
+
+    def _debug_output(answer: str) -> str:
+        print(f"【链调试】生成回答完成: {answer[:200]}", flush=True)
+        return answer
+
+    chain = (
+            RunnableLambda(process_chat_history)
+            | RunnableLambda(lambda x: (print("【链调试】历史处理完成", flush=True), x)[1])
+            | {
+                "rewritten_query": RunnableLambda(_debug_rewriter),
+                "input": itemgetter("input"),  # 保留原始问题，可用于回答
+                "chat_history": itemgetter("chat_history"),
+            }
+            | RunnablePassthrough.assign(docs=_debug_retrieve)
+            | RunnablePassthrough.assign(all_document_str=lambda x: _format_docs(x["docs"]))
+            | prompt
+            | RunnableLambda(_debug_prompt)
+            | llm
+            | StrOutputParser()
+            | RunnableLambda(_debug_output)
+    )
     return chain
 
 
@@ -213,12 +251,12 @@ def create_conversational_rag(knowledge_id: int):
 # ---------- 使用示例 ----------
 if __name__ == "__main__":
     # 初始化带多轮对话的 RAG
-    conversational_rag = create_conversational_rag(knowledge_id=9)
+    conversational_rag = create_conversational_rag(knowledge_id=1)
     # 模拟多轮对话
     session_id = "user_123"
     # 第一轮
     response1 = conversational_rag.invoke(
-        {"input": "这是毕业论文？"},
+        {"input": "如何激活conda环境？"},
         config={"configurable": {"session_id": session_id}}
     )
     print("AI:", response1)

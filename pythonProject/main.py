@@ -23,6 +23,7 @@ from src.database.db_api import (
 )
 from src.analysis.processor import DocumentProcessor
 from src.rag.ragsimple import create_conversational_rag
+from src.rag.MultiDialogueRag import get_session_history as get_redis_session_history
 from src.app_config.loder import ConfigLoader
 from src.app_config.logger import logger
 from src.exceptions import BusinessException, NotFoundException
@@ -401,6 +402,25 @@ def chat(req: RAGRequest) -> RAGResponse:
         process_status="completed",
         processing_time=_elapsed(start),
     )
+
+
+@app.delete("/v1/chat/history")
+def clear_chat_history(session_id: str):
+    """清空指定会话的聊天历史（删除 Redis 中的会话数据）"""
+    start = time.time()
+
+    history = get_redis_session_history(session_id)
+    history.clear()  # 删除 hash 数据和 seq 计数器两个 key
+
+    logger.info(f"清空会话历史: session={session_id}")
+
+    return {
+        "request_id": _new_request_id(),
+        "response_code": 200,
+        "response_msg": "会话历史已清空",
+        "data": {"session_id": session_id},
+        "processing_time": _elapsed(start),
+    }
 
 
 # ==================== 启动 ====================
