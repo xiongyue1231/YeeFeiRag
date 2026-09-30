@@ -26,12 +26,12 @@ class DatabaseConfig(BaseModel):
 
 class RagConfig(BaseModel):
     llm_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    llm_api_key: str = "sk-cbf8dce472b74ddfbf3210f7d52dd758"
+    llm_api_key: str = ""
     llm_model: str = "qwen-plus"
 
     vllm_base: str = "http://localhost:8000/v1"
-    vllm_api_key: str = "43aa6570992d01fab078e157e07b4f52.ocKHwNGxhIBrDZD4"
-    vllm_model: str = "models/Qwen/Qwen3.5-0.8B/"
+    vllm_api_key: str = ""
+    vllm_model: str = "qwen3.5-0.8B"
     temperature: float = 0.1
     # model: str = "qwen-plus"
 
@@ -44,7 +44,7 @@ class RagConfig(BaseModel):
     use_rerank: bool = True
     use_rrf: bool = True
     port: int = 6010
-    provider: str = "openai"
+    provider: str = "vllm"  # openai, ollama, vllm 本地/接口商
 
 
 class DeviceConfig(BaseModel):

@@ -23,13 +23,13 @@ models:
   embedding_model:
     bge-small-zh-v1.5:
       hf_url: "https://huggingface.co/BAAI/bge-small-zh-v1.5"
-      local_url: "../models/BAAI/bge-small-zh-v1.5"
+      local_url: "src/models/BAAI/bge-small-zh-v1.5"
       dims: 512
 
   rerank_model:
     bge-reranker-base:
       hf_url: "https://huggingface.co/BAAI/bge-reranker-base"
-      local_url: "../models/BAAI/bge-reranker-base"
+      local_url: "src/models/BAAI/bge-reranker-base"
 
 
 rag:
@@ -38,8 +38,8 @@ rag:
   llm_model: "qwen-plus"
 
   vllm_base: "http://localhost:8000/v1"
-  vllm_api_key: "43aa6570992d01fab078e157e07b4f52.ocKHwNGxhIBrDZD4"
-  vllm_model: "models/Qwen/Qwen3.5-0.8B/"
+  vllm_api_key: ""
+  vllm_model: "qwen3.5-0.8b"
   temperature: 0.1
 #  model: "qwen-plus"
 
@@ -52,7 +52,7 @@ rag:
   use_rerank: true
   use_rrf: true
   port: 6010
-  provider: "openai"
+  provider: "vllm"
 
 # 多轮对话配置
 multi_dialogue_rag:

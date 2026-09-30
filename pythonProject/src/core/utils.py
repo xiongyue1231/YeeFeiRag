@@ -10,61 +10,46 @@ from langchain_openai import ChatOpenAI
 config_manager = ConfigLoader()
 
 
-def create_llm_client(config: RagConfig):
-    """创建LLM客户端"""
+def _resolve_llm_params(config: RagConfig) -> Dict[str, Any]:
+    """根据 provider 统一解析 LLM 连接参数：model / api_key / base_url"""
     if config.provider == "openai":
-        kwargs = {
-
+        return {
+            "model": config.llm_model,
+            "api_key": config.llm_api_key,
+            "base_url": config.llm_base,
         }
-        if config.llm_api_key:
-            kwargs["api_key"] = config.llm_api_key
-        if config.llm_base:
-            kwargs["base_url"] = config.llm_base
-        return OpenAI(**kwargs)
-    elif config.provider == "ollama":
-        pass
-
-    elif config.provider == "vllm":
-        kwargs = {
-            "model": config.model
+    if config.provider == "vllm":
+        return {
+            "model": config.vllm_model,
+            # vLLM 本地服务不校验 key，为空时给占位值，避免 OpenAI SDK 报 Missing credentials
+            "api_key": config.vllm_api_key or "EMPTY",
+            "base_url": config.vllm_base,
         }
-        if config.vllm_api_key:
-            kwargs["api_key"] = config.vllm_api_key
-        if config.vllm_base:
-            kwargs["base_url"] = config.vllm_base
-        return OpenAI(**kwargs)
-    else:
-        raise ValueError(f"不支持的 LLM 提供商: {config.provider}")
+    if config.provider == "ollama":
+        raise NotImplementedError("ollama 提供商暂未实现")
+    raise ValueError(f"不支持的 LLM 提供商: {config.provider}")
+
+
+def create_llm_client(config: RagConfig) -> OpenAI:
+    """创建原生 OpenAI SDK 客户端"""
+    params = _resolve_llm_params(config)
+    return OpenAI(
+        api_key=params["api_key"],
+        base_url=params["base_url"],
+    )
 
 
 def create_llm_langchain(config: RagConfig) -> ChatOpenAI:
-    kwargs = {}
-    if config.provider == "openai":
-        if config.llm_api_key:
-            kwargs["api_key"] = config.llm_api_key
-        if config.llm_base:
-            kwargs["base_url"] = config.llm_base
-        if config.llm_model:
-            kwargs["model"] = config.llm_model
-    elif config.provider == "ollama":
-        pass
-
-    elif config.provider == "vllm":
-        if config.vllm_api_key:
-            kwargs["api_key"] = config.vllm_api_key
-        if config.vllm_base:
-            kwargs["base_url"] = config.vllm_base
-        if config.vllm_model:
-            kwargs["model"] = config.vllm_model
-    else:
-        raise ValueError(f"不支持的 LLM 提供商: {config.provider}")
-
+    """创建 LangChain ChatOpenAI 客户端"""
+    params = _resolve_llm_params(config)
     return ChatOpenAI(
-        model=kwargs["model"],
+        model=params["model"],
         temperature=0.1,
         top_p=0.9,
-        api_key=kwargs["api_key"],
-        base_url=kwargs["base_url"],
+        api_key=params["api_key"],
+        base_url=params["base_url"],
+        timeout=60,            # 单次请求超时 60s，避免 vLLM 冷加载时无限等待
+        max_retries=0,         # 失败不重试，避免掩盖问题
     )
 
 
@@ -76,12 +61,21 @@ def load_rerank_model(model_name: str, model_path: str) -> EMBEDDING_MODEL_PARAM
     """
     加载重排序模型
     :param model_name: 模型名称
-    :param model_path: 模型路径
+    :param model_path: 模型路径（支持相对路径，相对于 pythonProject 根目录）
     :return:
     """
-    current_dir = Path(__file__).parent.parent.resolve()
-    model_path = current_dir / "models" / "BAAI" / "bge-reranker-base"
-    model_path = str(model_path)
+    if not os.path.isabs(model_path):
+        # utils.py 在 pythonProject/src/core/ 下，向上三级到 pythonProject
+        project_root = Path(__file__).parent.parent.parent.resolve()
+        model_path = str(project_root / model_path)
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(
+            f"[load_rerank_model] 本地 rerank 模型路径不存在: {model_path}\n"
+            f"请把 BAAI/bge-reranker-base 下载到该目录，或修改 config.yaml 的 local_url"
+        )
+
+    print(f"[load_rerank_model] loading: {model_path}", flush=True)
     if model_name in ["bge-reranker-base"]:
         EMBEDDING_MODEL_PARAMS["rerank_model"] = AutoModelForSequenceClassification.from_pretrained(model_path)
         EMBEDDING_MODEL_PARAMS["rerank_tokenizer"] = AutoTokenizer.from_pretrained(model_path)

@@ -24,7 +24,9 @@ else:
 
     engine = create_engine(
         f"{db_type}://{username}:{password}@{host}:{port}/{database}",
-        echo=True
+        echo=True,
+        pool_pre_ping=True,   # 取连接前先探活，避免拿到已被 MySQL/防火墙断开的陈旧连接
+        pool_recycle=3600,    # 空闲超过 1 小时自动回收，需小于 MySQL wait_timeout
     )
 
 # 创建 Base 类
@@ -66,10 +68,10 @@ class KnowledgeDocument(Base):
 
     document_id = Column(Integer, primary_key=True, autoincrement=True, comment="主键ID")  # 文档主键，自动递增
     title = Column(String(255), comment="文档名称")  # 文档名称
-    category = Column(String(255), comment="文档类型")  # 文档类型
+    knowledge_name = Column(String(255), comment="知识库名称")  # 文档类型
     knowledge_id = Column(Integer, ForeignKey('knowledge_database.knowledge_id'), comment="知识库id")  # 知识库主键（外键）
     file_path = Column(String(255), comment='文件存储地址')  # 储存地址
-    file_type = Column(String(255), comment='数据类型')  # 数据类型
+    file_type = Column(String(255), comment='文件类型')  # 文件类型
     create_dt = Column(DateTime, default=datetime.utcnow, comment='创建时间')  # 创建时间
     update_dt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='更新时间')  # 更新时间
 

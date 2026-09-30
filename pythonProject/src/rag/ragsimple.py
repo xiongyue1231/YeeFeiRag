@@ -125,7 +125,7 @@ def create_rag_chain(knowledge_id: int):
     """
     # 初始化 LLM 目前设置为 ChatOpenAI方式
     llm = create_llm_langchain(config_manager.config.rag)
-
+    print("llm: 初始化完成")
     # 获取配置参数
     llm_max_token = config_manager.config.multi_dialogue_rag.llm_max_token
 
@@ -138,10 +138,10 @@ def create_rag_chain(knowledge_id: int):
         chunk_candidate=config_manager.config.rag.chunk_candidate,
         knowledge_id=knowledge_id,
     )
-
+    print("初始化检索器完成")
     # 问题改写器（可选：每次对话都先改写用户问题以提升检索效果）
     query_rewriter = create_query_rewriter(llm)
-
+    print("初始化问题改写器完成")
     # 构建 RAG 提示模板（包含对话历史）
     system_prompt = get_prompt_template("basic_rag")["system"]
     user_template = get_prompt_template("basic_rag")["user"]
@@ -151,7 +151,7 @@ def create_rag_chain(knowledge_id: int):
         MessagesPlaceholder(variable_name="chat_history"),  # 对话历史占位符
         ("user", user_template),
     ])
-
+    print(f"初始化提示模板完成：{prompt}")
     # 定义链的处理流程
     def _format_docs(docs: List[Document]) -> str:
         return "\n\n".join(doc.page_content for doc in docs)
@@ -213,7 +213,7 @@ def create_conversational_rag(knowledge_id: int):
 # ---------- 使用示例 ----------
 if __name__ == "__main__":
     # 初始化带多轮对话的 RAG
-    conversational_rag = create_conversational_rag(knowledge_id=1)
+    conversational_rag = create_conversational_rag(knowledge_id=9)
     # 模拟多轮对话
     session_id = "user_123"
     # 第一轮
@@ -232,5 +232,5 @@ if __name__ == "__main__":
 
     # 查看历史消息
     print("\n对话历史：")
-    for msg in get_redis_session_history[session_id].messages:
+    for msg in get_redis_session_history(session_id).messages:
         print(f"{msg.type}: {msg.content}")

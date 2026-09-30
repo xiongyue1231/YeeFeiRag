@@ -35,7 +35,7 @@ class Rag:
         self.rerank_model = config_manager.config.rag.rerank_model
         self.device = config_manager.config.deviceSettings.device  # 设备cpu还是gpu
         self.client = create_llm_client(config_manager.config.rag)
-        self.llm_model = config_manager.config.rag.model
+        self.llm_model = config_manager.config.rag.vllm_model
         self.Vec = VecEmbedding()
         self.use_rerank = config_manager.config.rag.use_rerank
         self.use_rrf = config_manager.config.rag.use_rrf
@@ -48,6 +48,10 @@ class Rag:
         :param text_pair: 待排序文本
         :return: 匹配打分结果
         """
+        # 空输入直接返回空数组，避免 tokenizer 内部 IndexError
+        if not text_pair:
+            return np.array([], dtype=np.float32)
+
         if self.rerank_model in ["bge-reranker-base"]:
             with torch.no_grad():
                 inputs = EMBEDDING_MODEL_PARAMS["rerank_tokenizer"](
@@ -68,13 +72,25 @@ class Rag:
     def query_document(self, query: str, knowledge_id: int) -> List[str]:
         global sorted_content, sorted_records
 
-        knowledge_record = Session().query(KnowledgeDatabase).filter(
-            KnowledgeDatabase.knowledge_id == knowledge_id).first()
+        # 关键修复：用 with 管理 session，并在关闭前把 collection_name 取出
+        # 原来裸用 Session() 没关闭，后面访问 knowledge_record.category 会触发 DetachedInstanceError
+        with Session() as session:
+            knowledge_record = (
+                session.query(KnowledgeDatabase)
+                .filter(KnowledgeDatabase.knowledge_id == knowledge_id)
+                .first()
+            )
+            if knowledge_record is None:
+                print(f"【调试】知识库 {knowledge_id} 不存在")
+                return []
+            collection_name = knowledge_record.category
+
+        print(f"【调试】知识库 {knowledge_id} 检索，collection_name: {collection_name}")
         # 全文检索，指定一个知识库检索，bm25打分
-        word_search_response = self.milvus.search_bm25(query, collection_name=knowledge_record.category, top_k=5)
+        word_search_response = self.milvus.search_bm25(query, collection_name=collection_name, top_k=5)
         # 语义检索
         embedding_vector = self.Vec.get_embedding(query)  # 编码
-        vector_search_response = self.milvus.search_dense(embedding_vector, collection_name=knowledge_record.category,
+        vector_search_response = self.milvus.search_dense(embedding_vector, collection_name=collection_name,
                                                           top_k=5)
 
         if self.use_rrf:
@@ -107,6 +123,11 @@ class Rag:
             sorted_dict = sorted(fusion_score.items(), key=lambda item: item[1], reverse=True)
             sorted_records = [search_id2record[x[0]] for x in sorted_dict][:self.chunk_candidate]
             sorted_content = [x["text"] for x in sorted_records]
+
+        # 检索为空时直接返回，避免下游 tokenizer / 拼接空文档出错
+        if not sorted_content:
+            print(f"【调试】知识库 {knowledge_id} 检索无命中，直接返回空结果")
+            return []
 
         if self.use_rerank:
             text_pair = []
@@ -172,5 +193,11 @@ class Rag:
 
 if __name__ == "__main__":
     rag = Rag()
-    res = rag.chat_with_rag(1, [{"role": "user", "content": "测试"}])
+    # with Session() as session:
+    #     record = (
+    #         session.query(KnowledgeDatabase)
+    #         .filter(KnowledgeDatabase.knowledge_id == 8)
+    #         .first()
+    #     )
+    res = rag.chat_with_rag(9, [{"role": "user", "content": "啊啊啊啊"}])
     print(res)

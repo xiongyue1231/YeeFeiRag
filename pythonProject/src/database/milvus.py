@@ -20,8 +20,8 @@ class MilvusManager:
         self.client = MilvusClient(host=config_manager.config.milvus.host, port=config_manager.config.milvus.port)
         self.activate_collection = None
 
-    def init_collection(self, content_type: str):
-        collection_name = content_type
+    def init_collection(self, collectionName: str):
+        collection_name = collectionName
         if self.client.has_collection(collection_name):
             print(f"集合 {collection_name} 已存在")
             return collection_name
@@ -96,14 +96,14 @@ class MilvusManager:
                                       )
         return collection_name
 
-    def set_collection(self, content_type: str):
+    def set_collection(self, collection_name: str):
         """切换当前操作的集合"""
-        self.activate_collection = content_type
+        self.activate_collection = collection_name
         print(f"切换到集合: {self.activate_collection}")
 
-    def add_document(self, data, content_type: str):
+    def add_document(self, data, collection: str):
         """添加文档到指定集合"""
-        collection_name = content_type if content_type != '' else self.activate_collection
+        collection_name = collection if collection != '' else self.activate_collection
 
         if not collection_name:
             raise ValueError("请指定 content_type 或先调用 set_collection()")
@@ -120,6 +120,9 @@ class MilvusManager:
     def search_bm25(self, query: str, top_k: int = 5,
                     collection_name: str = config_manager.config.milvus.collection_name) -> List[Dict]:
         """BM25 全文检索（纯文本关键词匹配）"""
+        # 集合不存在时视为无数据，避免 load_collection 报 100 异常
+        if not self.client.has_collection(collection_name):
+            return []
         if self.client.get_load_state(collection_name) != "Loaded":
             self.client.load_collection(collection_name)
         search_params = {
@@ -140,6 +143,9 @@ class MilvusManager:
     def search_dense(self, query_vector: List[float], top_k: int = 5,
                      collection_name: str = config_manager.config.milvus.collection_name) -> List[Dict]:
         """稠密向量检索（语义匹配）"""
+        # 集合不存在时视为无数据，避免 load_collection 报 100 异常
+        if not self.client.has_collection(collection_name):
+            return []
         if self.client.get_load_state(collection_name) != "Loaded":
             self.client.load_collection(collection_name)
 

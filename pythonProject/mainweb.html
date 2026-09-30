@@ -481,10 +481,6 @@
                         <label>知识库名称</label>
                         <input type="text" id="kbName" placeholder="请输入知识库名称" required>
                     </div>
-                    <div class="form-group">
-                        <label>分类</label>
-                        <input type="text" id="kbCategory" placeholder="请输入分类" required>
-                    </div>
                     <button type="submit" class="btn btn-primary">创建知识库</button>
                 </form>
             </div>
@@ -497,7 +493,7 @@
                             <tr>
                                 <th>ID</th>
                                 <th>名称</th>
-                                <th>分类</th>
+                                <th>所属向量库</th>
                                 <th>创建时间</th>
                                 <th>操作</th>
                             </tr>
@@ -528,14 +524,6 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>文档标题</label>
-                        <input type="text" id="docTitle" placeholder="请输入文档标题" required>
-                    </div>
-                    <div class="form-group">
-                        <label>文档分类</label>
-                        <input type="text" id="docCategory" placeholder="请输入文档分类" required>
-                    </div>
-                    <div class="form-group">
                         <label>选择文件</label>
                         <div class="file-upload" onclick="document.getElementById('docFile').click()">
                             <p>📁 点击选择文件 或 拖拽文件到此处</p>
@@ -554,11 +542,9 @@
                     <table id="documentTable">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>所属知识库</th>
                                 <th>标题</th>
-                                <th>分类</th>
-                                <th>知识库ID</th>
-                                <th>文件类型</th>
+                                <th>保存路径</th>
                                 <th>创建时间</th>
                             </tr>
                         </thead>
@@ -648,13 +634,12 @@
         document.getElementById('createKnowledgeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('kbName').value;
-            const category = document.getElementById('kbCategory').value;
 
             try {
                 const response = await fetch('/v1/knowledge_base', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, category })
+                    body: JSON.stringify({ title })
                 });
                 const data = await response.json();
 
@@ -782,8 +767,6 @@
                 return;
             }
 
-            const title = document.getElementById('docTitle').value;
-            const category = document.getElementById('docCategory').value;
             const file = document.getElementById('docFile').files[0];
 
             if (!file) {
@@ -793,8 +776,6 @@
 
             const formData = new FormData();
             formData.append('knowledge_id', knowledgeId);
-            formData.append('title', title);
-            formData.append('category', category);
             formData.append('file', file);
             formData.append('background_tasks', 'true');
 
@@ -853,11 +834,9 @@
 
             tbody.innerHTML = documents.map(doc => `
                 <tr>
-                    <td>${doc.document_id}</td>
+                    <td>${doc.knowledge_name}</td>
                     <td>${doc.title}</td>
-                    <td>${doc.category}</td>
-                    <td>${doc.knowledge_id}</td>
-                    <td>${doc.file_type || '-'}</td>
+                    <td>${doc.file_path}</td>
                     <td>${doc.create_dt ? new Date(doc.create_dt).toLocaleString() : '-'}</td>
                 </tr>
             `).join('');

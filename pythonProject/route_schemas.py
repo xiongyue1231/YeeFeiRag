@@ -40,7 +40,6 @@ class RerankResponse(BaseModel):
 
 
 class KnowledgeRequest(BaseModel):
-    category: str
     title: str
 
 
@@ -56,10 +55,8 @@ class KnowledgeResponse(BaseModel):
 
 
 class DocumentRequest(BaseModel):
-    knowledge_id: int = Annotated[str, Form()],
-    title: str = Annotated[str, Form()],
-    category: str = Annotated[str, Form()],
-    file: UploadFile = Annotated[str, File(...)]
+    knowledge_id: int = Annotated[int, Form()]
+    file: UploadFile = Annotated[UploadFile, File(...)]
 
 
 class DocumentResponse(BaseModel):

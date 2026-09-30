@@ -114,8 +114,11 @@ def get_session_history(
     """
     global _redis_client
 
+    # 懒加载：未显式初始化时，自动按配置创建 Redis 连接
+    if _redis_client is None and redis_client is None:
+        init_redis()
+
     client = redis_client or _redis_client
-    # 程序运行时报错
     if client is None:
         raise RuntimeError(
             "Redis client not initialized. Call init_redis() first or pass redis_client."

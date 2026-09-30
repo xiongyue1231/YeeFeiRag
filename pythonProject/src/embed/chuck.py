@@ -12,8 +12,10 @@ class OCRChuck:
         self.cleanSentence = []
         self.chunk_size = config_manager.config.rag.chunk_size
         self.chunk_overlap = config_manager.config.rag.chunk_overlap
-
-        # ============ 2. 文本清洗 加结构化数据===========
+        # ============ 关键修复：embedding 模型只加载一次 ============
+        # 原来在 clean_sentences 的 for 循环里每次都重新实例化 VecEmbedding()，
+        # 会反复加载 PyTorch C++ 扩展，是触发 0xC0000005 访问冲突的主要原因。
+        self.embedding = VecEmbedding()
 
     def clean_sentences(self, sentences: List[str], source: str, source_type: str, source_hash: str, knowledge_id: int,
                         document_id: int, semantic_chunking: bool = True) -> \
@@ -25,16 +27,16 @@ class OCRChuck:
             if len(cleaned_text) < 2 and confidence < 0.5:  # ← 置信度过滤
                 continue
 
-            embedding = VecEmbedding()
+            # ============ 关键修复：复用 __init__ 加载好的模型实例 ============
             if len(text) < self.chunk_size:
-                vec = embedding.get_embedding(text).tolist()
+                vec = self.embedding.get_embedding(text).tolist()
                 # 短句：直接入库（单句=单chunk）
                 self._add_chunk(idx, source, sentences, text, vec, source_hash, knowledge_id, document_id, source_type)
             else:
                 # 长句：分块入库
                 chucks = self._split_long_text(text, self.chunk_size, self.chunk_overlap, semantic_chunking)
                 for chunk in chucks:
-                    vec = embedding.get_embedding(chunk).tolist()
+                    vec = self.embedding.get_embedding(chunk).tolist()
                     self._add_chunk(idx, source, sentences, text, vec, source_hash, knowledge_id, document_id, source_type)
 
         return self.cleanSentence
