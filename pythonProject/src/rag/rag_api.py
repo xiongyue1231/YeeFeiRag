@@ -154,8 +154,8 @@ class Rag:
             # 对用户提问进行改写  目前使用大模型进行改写
             query = self.chat([{"role": "system", "content": get_prompt_template("rewriter")["system"]},
                                {"role": "user",
-                                "content": get_prompt_template("rewriter")["user"].replace("{original_input}", query)}],
-                              0.1, 0.1
+                                "content": get_prompt_template("rewriter")["user"].replace("{input}", query)}],
+                              0.5, 0.1
                               ).content
             print(f"【大模型改写用户提问】【改写后：{query}】")
             related_records = self.query_document(query, knowledge_id)  # 检索到相关的文档
@@ -199,5 +199,5 @@ if __name__ == "__main__":
     #         .filter(KnowledgeDatabase.knowledge_id == 8)
     #         .first()
     #     )
-    res = rag.chat_with_rag(9, [{"role": "user", "content": "啊啊啊啊"}])
+    res = rag.chat_with_rag(1, [{"role": "user", "content": "激活虚拟环境的命令是什么"}])
     print(res)

@@ -12,9 +12,6 @@ class OCRChuck:
         self.cleanSentence = []
         self.chunk_size = config_manager.config.rag.chunk_size
         self.chunk_overlap = config_manager.config.rag.chunk_overlap
-        # ============ 关键修复：embedding 模型只加载一次 ============
-        # 原来在 clean_sentences 的 for 循环里每次都重新实例化 VecEmbedding()，
-        # 会反复加载 PyTorch C++ 扩展，是触发 0xC0000005 访问冲突的主要原因。
         self.embedding = VecEmbedding()
 
     def clean_sentences(self, sentences: List[str], source: str, source_type: str, source_hash: str, knowledge_id: int,
@@ -44,7 +41,7 @@ class OCRChuck:
     def _add_chunk(self, idx, source, sentences, text, vec, hash_md5, knowledge_id: int, document_id: int,
                    source_type="image"):
         data = {
-            "id": f"{source}_sent_{idx}",
+            "id": f"{document_id}_{source_type}_sent_{idx}",
             "text": text,  # 原始文本
             "vector": vec,
             "metadata": {

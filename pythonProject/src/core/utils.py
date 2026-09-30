@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 import os
 from src.app_config.models import RagConfig
 from openai import OpenAI
+import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from pathlib import Path
 from src.app_config.loder import ConfigLoader
@@ -77,7 +78,12 @@ def load_rerank_model(model_name: str, model_path: str) -> EMBEDDING_MODEL_PARAM
 
     print(f"[load_rerank_model] loading: {model_path}", flush=True)
     if model_name in ["bge-reranker-base"]:
-        EMBEDDING_MODEL_PARAMS["rerank_model"] = AutoModelForSequenceClassification.from_pretrained(model_path)
+        device = config_manager.config.deviceSettings.device
+        EMBEDDING_MODEL_PARAMS["rerank_model"] = AutoModelForSequenceClassification.from_pretrained(
+            model_path,
+            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            low_cpu_mem_usage=True,
+        )
         EMBEDDING_MODEL_PARAMS["rerank_tokenizer"] = AutoTokenizer.from_pretrained(model_path)
         EMBEDDING_MODEL_PARAMS["rerank_model"].eval()
         EMBEDDING_MODEL_PARAMS["rerank_model"].to(config_manager.config.deviceSettings.device)

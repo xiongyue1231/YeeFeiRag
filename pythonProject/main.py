@@ -334,10 +334,8 @@ async def upload_document(
     return DocumentResponse(
         request_id=_new_request_id(),
         document_id=document_id,
-        knowledge_title=knowledge_title,
         title=title,
         knowledge_id=knowledge_id,
-        file_type=file.content_type,
         response_code=200,
         response_msg="文档添加成功",
         process_status="completed",
