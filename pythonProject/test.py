@@ -1,3 +1,5 @@
+
+import torch; print(torch.cuda.is_available())
 #
 # #模型下载
 # from modelscope import snapshot_download
@@ -17,8 +19,8 @@
 # from modelscope import snapshot_download
 # model_dir = snapshot_download('BAAI/bge-small-zh-v1.5',local_dir='./models/BAAI/bge-small-zh-v1.5')
 
-from modelscope import snapshot_download
-model_dir = snapshot_download('Qwen/Qwen3.5-0.8B',local_dir='./src/models/Qwen/Qwen3.5-0.8B')
+# from modelscope import snapshot_download
+# model_dir = snapshot_download('Qwen/Qwen3.5-0.8B',local_dir='./src/models/Qwen/Qwen3.5-0.8B')
 
 # import torch
 # from diffusers import AutoencoderKLWan, WanPipeline
@@ -76,7 +78,7 @@ model_dir = snapshot_download('Qwen/Qwen3.5-0.8B',local_dir='./src/models/Qwen/Q
 
 
 #模型下载
-from modelscope import snapshot_download
+# from modelscope import snapshot_download
 # model_dir = snapshot_download('Wan-AI/Wan2.1-T2V-1.3B-Diffusers', local_dir='src/models/Wan-AI/Wan2.1-T2V-1.3B-Diffusers')
 
 # model_dir = snapshot_download('Wan-AI/Wan2.2-TI2V-5B-Diffusers', local_dir='src/models/Wan-AI/Wan2.2-TI2V-5B-Diffusers')

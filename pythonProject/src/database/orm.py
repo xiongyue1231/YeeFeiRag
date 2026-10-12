@@ -61,7 +61,6 @@ class KnowledgeDatabase(Base):
 
 
 
-
 # 定义 knowledge_document 表
 class KnowledgeDocument(Base):
     __tablename__ = 'knowledge_document'

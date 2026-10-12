@@ -38,7 +38,7 @@ class HybridRetriever(BaseRetriever):
 
     def _get_relevant_documents(self, query: str) -> List[Document]:
         # 获取知识库对应的 collection 名称
-        from src.database.db_api import Session, KnowledgeDatabase
+        from src.database.orm import Session, KnowledgeDatabase
         knowledge_record = Session().query(KnowledgeDatabase).filter(
             KnowledgeDatabase.knowledge_id == self.knowledge_id
         ).first()
@@ -119,5 +119,3 @@ class HybridRetriever(BaseRetriever):
             )
             docs.append(doc)
         return docs
-
-

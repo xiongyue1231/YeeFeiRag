@@ -1,6 +1,6 @@
 import re
 from typing import List, Dict
-from src.embed.embedding import VecEmbedding
+from src.embed.embedding import get_vec_embedding
 from src.app_config.loder import ConfigLoader
 import hashlib
 
@@ -12,7 +12,7 @@ class OCRChuck:
         self.cleanSentence = []
         self.chunk_size = config_manager.config.rag.chunk_size
         self.chunk_overlap = config_manager.config.rag.chunk_overlap
-        self.embedding = VecEmbedding()
+        self.embedding = get_vec_embedding()
 
     def clean_sentences(self, sentences: List[str], source: str, source_type: str, source_hash: str, knowledge_id: int,
                         document_id: int, semantic_chunking: bool = True) -> \

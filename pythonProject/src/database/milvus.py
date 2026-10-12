@@ -1,8 +1,9 @@
 from pymilvus import MilvusClient, DataType, Collection, Function, FunctionType, FieldSchema, CollectionSchema
 from enum import Enum
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from src.app_config.loder import ConfigLoader
 import hashlib
+import threading
 
 config_manager = ConfigLoader()
 
@@ -202,6 +203,24 @@ class MilvusManager:
             print(f"成功删除集合 {collection_name} 中 hash={source_hash} 的旧数据")
         except Exception as e:
             print(f"删除数据失败: {str(e)}")
+
+
+# ---------- 全局单例：Milvus 连接进程内只建立一次 ----------
+_shared_milvus: Optional[MilvusManager] = None
+_milvus_lock = threading.Lock()
+
+
+def get_milvus_manager() -> MilvusManager:
+    """
+    获取全局共享的 MilvusManager 实例（懒加载）。
+    MilvusClient 的连接是线程安全的，可被对话检索、文档入库等所有流程复用。
+    """
+    global _shared_milvus
+    if _shared_milvus is None:
+        with _milvus_lock:
+            if _shared_milvus is None:
+                _shared_milvus = MilvusManager()
+    return _shared_milvus
 
 
 # 在 __main__ 里测试

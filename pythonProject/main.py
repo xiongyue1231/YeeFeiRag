@@ -17,13 +17,13 @@ from route_schemas import (
     DocumentResponse, KnowledgeRequest, KnowledgeResponse,
     RAGRequest, RAGResponse,
 )
-from src.database.db_api import (
+from src.database.orm import (
     KnowledgeDatabase, KnowledgeDocument, Session,
     get_all_knowledge_bases,
 )
 from src.analysis.processor import DocumentProcessor
-from src.rag.ragsimple import create_conversational_rag
-from src.rag.MultiDialogueRag import get_session_history as get_redis_session_history
+from src.rag.rag_chain import create_conversational_rag
+from src.rag.chat_memory import get_session_history as get_redis_session_history
 from src.app_config.loder import ConfigLoader
 from src.app_config.logger import logger
 from src.exceptions import BusinessException, NotFoundException
@@ -141,7 +141,7 @@ def create_knowledge_base(req: KnowledgeRequest) -> KnowledgeResponse:
         session.flush()  # 拿到自增主键
         knowledge_id = record.knowledge_id
         # category 存储 Milvus 集合名，由 knowledge_id 生成，
-        # 与检索侧（rag_api.py / ragbase.py 的 kb_{knowledge_id}）保持一致
+        # 与检索侧（hybrid_retriever.py 的 kb_{knowledge_id}）保持一致
         category = f"kb_{knowledge_id}"
         record.category = category
         session.commit()

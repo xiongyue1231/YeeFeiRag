@@ -82,8 +82,8 @@ class RedisConfig(BaseModel):
     SESSION_TTL: int = 604800
 
 
-class MultiDialogueRagConfig(BaseModel):
-    """多轮对话配置"""
+class ChatMemoryConfig(BaseModel):
+    """对话记忆配置"""
     estimate_token_fun: str = "avg"
     llm_max_token: int = 1024
     cut_dialogue_scale: int = 2
@@ -101,4 +101,4 @@ class AppConfig(BaseModel):
     deviceSettings: DeviceConfig
     models: ModelsConfig
     redis: RedisConfig
-    multi_dialogue_rag: MultiDialogueRagConfig
+    chat_memory: ChatMemoryConfig

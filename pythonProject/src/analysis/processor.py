@@ -1,6 +1,6 @@
 from src.embed.chuck import OCRChuck
 from src.analysis.file_handler import FileHandler
-from src.database.milvus import MilvusManager
+from src.database.milvus import get_milvus_manager
 from src.app_config.loder import ConfigLoader
 from src.app_config.logger import logger
 import traceback
@@ -15,7 +15,7 @@ class DocumentProcessor:
     def __init__(self):
         self.file_handler = FileHandler()
         self.chuck_handler = OCRChuck()
-        self.store_to_milvus = MilvusManager()
+        self.store_to_milvus = get_milvus_manager()
 
     def process_and_store(self, file_path: str, file_type: str, collection_name: str, knowledge_id: int, document_id: int):
         # ============ 关键修复：后台任务必须 try/except ============
@@ -53,9 +53,9 @@ class DocumentProcessor:
             return {"status": "failed", "error": str(e)}
 
 
-if __name__ == "__main__":
-    processor = DocumentProcessor()
-    processor.process_and_store("../../imgtest/新建 DOCX 文档.docx", "docx",
-                                "current_collection_test", 1, 1)
-    # processor.process_and_store("./imgtest/milvus.txt")
-    # processor.process_and_store("./imgtest/test.png")
+# if __name__ == "__main__":
+#     processor = DocumentProcessor()
+#     processor.process_and_store("../../imgtest/新建 DOCX 文档.docx", "docx",
+#                                 "current_collection_test", 1, 1)
+#     # processor.process_and_store("./imgtest/milvus.txt")
+#     # processor.process_and_store("./imgtest/test.png")

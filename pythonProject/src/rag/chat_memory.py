@@ -8,6 +8,7 @@ from src.app_config.loder import ConfigLoader
 
 config_manager = ConfigLoader()
 
+
 class RedisChatMessageHistory(BaseChatMessageHistory):
     """基于 Redis 的聊天消息历史，支持 TTL 和会话内自增 seq_id"""
 
@@ -89,7 +90,8 @@ _redis_client: Optional[Redis] = None
 _store: dict[str, RedisChatMessageHistory] = {}  # 本地缓存，减少 Redis 连接创建
 
 
-def init_redis(host: str = config_manager.config.redis.host, port: int = config_manager.config.redis.port, db: int = 0, **kwargs):
+def init_redis(host: str = config_manager.config.redis.host, port: int = config_manager.config.redis.port, db: int = 0,
+               **kwargs):
     """初始化全局 Redis 连接"""
     global _redis_client
     # socket_timeout：Redis 僵死时快速报错，避免整个链路无限挂起

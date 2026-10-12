@@ -9,15 +9,15 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_community.chat_message_histories import ChatMessageHistory
 # 假设你原来的模块路径可导入
-from src.embed.embedding import VecEmbedding
-from src.database.milvus import MilvusManager
+from src.embed.embedding import get_vec_embedding
+from src.database.milvus import get_milvus_manager
 from src.app_config.loder import ConfigLoader
 from src.prompts.templates import get_prompt_template
 from src.core.utils import create_llm_langchain
-from src.rag.ragbase import HybridRetriever
+from src.rag.hybrid_retriever import HybridRetriever
 from operator import itemgetter
 from langchain_community.chat_message_histories import RedisChatMessageHistory
-from src.rag.MultiDialogueRag import (get_session_history as get_redis_session_history)
+from src.rag.chat_memory import (get_session_history as get_redis_session_history)
 import json
 
 # ---------- 加载配置 ----------
@@ -127,12 +127,12 @@ def create_rag_chain(knowledge_id: int):
     llm = create_llm_langchain(config_manager.config.rag)
     print("llm: 初始化完成")
     # 获取配置参数
-    llm_max_token = config_manager.config.multi_dialogue_rag.llm_max_token
+    llm_max_token = config_manager.config.chat_memory.llm_max_token
 
-    # 初始化检索器
+    # 初始化混合检索器
     retriever = HybridRetriever(
-        vec_embedding=VecEmbedding(),
-        milvus=MilvusManager(),
+        vec_embedding=get_vec_embedding(),
+        milvus=get_milvus_manager(),
         use_rrf=config_manager.config.rag.use_rrf,
         use_rerank=config_manager.config.rag.use_rerank,
         chunk_candidate=config_manager.config.rag.chunk_candidate,
@@ -248,27 +248,27 @@ def create_conversational_rag(knowledge_id: int):
     return conversational_rag
 
 
-# ---------- 使用示例 ----------
-if __name__ == "__main__":
-    # 初始化带多轮对话的 RAG
-    conversational_rag = create_conversational_rag(knowledge_id=1)
-    # 模拟多轮对话
-    session_id = "user_123"
-    # 第一轮
-    response1 = conversational_rag.invoke(
-        {"input": "如何激活conda环境？"},
-        config={"configurable": {"session_id": session_id}}
-    )
-    print("AI:", response1)
-
-    # 第二轮，会携带历史上下文
-    response2 = conversational_rag.invoke(
-        {"input": "人工智能如何在企业中应用"},
-        config={"configurable": {"session_id": session_id}}
-    )
-    print("AI:", response2)
-
-    # 查看历史消息
-    print("\n对话历史：")
-    for msg in get_redis_session_history(session_id).messages:
-        print(f"{msg.type}: {msg.content}")
+# # ---------- 使用示例 ----------
+# if __name__ == "__main__":
+#     # 初始化带多轮对话的 RAG
+#     conversational_rag = create_conversational_rag(knowledge_id=1)
+#     # 模拟多轮对话
+#     session_id = "user_123"
+#     # 第一轮
+#     response1 = conversational_rag.invoke(
+#         {"input": "如何激活conda环境？"},
+#         config={"configurable": {"session_id": session_id}}
+#     )
+#     print("AI:", response1)
+#
+#     # 第二轮，会携带历史上下文
+#     response2 = conversational_rag.invoke(
+#         {"input": "人工智能如何在企业中应用"},
+#         config={"configurable": {"session_id": session_id}}
+#     )
+#     print("AI:", response2)
+#
+#     # 查看历史消息
+#     print("\n对话历史：")
+#     for msg in get_redis_session_history(session_id).messages:
+#         print(f"{msg.type}: {msg.content}")

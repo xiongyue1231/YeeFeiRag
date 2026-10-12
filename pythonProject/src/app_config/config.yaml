@@ -54,8 +54,8 @@ rag:
   port: 6010
   provider: "vllm"
 
-# 多轮对话配置
-multi_dialogue_rag:
+# 对话记忆配置
+chat_memory:
   estimate_token_fun: avg  # 默认token估计方式
   llm_max_token: 1024  # 大模型最长token数量
   cut_dialogue_scale: 2   # 预估达到最长token时的裁切比例，2表时裁切一半的历史对话生成摘要

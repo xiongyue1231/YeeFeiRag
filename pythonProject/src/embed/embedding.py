@@ -1,6 +1,9 @@
 from sentence_transformers import SentenceTransformer
 from src.app_config.loder import ConfigLoader
 import os
+import threading
+from typing import Optional
+
 config_manager = ConfigLoader()
 
 
@@ -36,3 +39,22 @@ class VecEmbedding:
     def get_embedding(self, text):
         result = self.model.encode(text, normalize_embeddings=True)
         return result
+
+
+# ---------- 全局单例：embedding 模型进程内只加载一次 ----------
+_shared_embedding: Optional[VecEmbedding] = None
+_embedding_lock = threading.Lock()
+
+
+def get_vec_embedding() -> VecEmbedding:
+    """
+    获取全局共享的 VecEmbedding 实例（懒加载）。
+    首次调用时从磁盘加载模型，之后所有调用复用同一实例。
+    线程安全：FastAPI 同步接口跑在线程池中，用锁防止并发重复加载。
+    """
+    global _shared_embedding
+    if _shared_embedding is None:
+        with _embedding_lock:
+            if _shared_embedding is None:
+                _shared_embedding = VecEmbedding()
+    return _shared_embedding
