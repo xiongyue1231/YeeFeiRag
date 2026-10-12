@@ -45,6 +45,7 @@ class RagConfig(BaseModel):
     use_rrf: bool = True
     port: int = 6010
     provider: str = "vllm"  # openai, ollama, vllm 本地/接口商
+    router_model: str = ""  # 意图路由专用模型（留空则复用主模型）
 
 
 class DeviceConfig(BaseModel):

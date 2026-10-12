@@ -53,6 +53,7 @@ rag:
   use_rrf: true
   port: 6010
   provider: "vllm"
+  router_model: ""  # 意图路由专用小模型（如 qwen-turbo），留空则复用主模型
 
 # 对话记忆配置
 chat_memory:

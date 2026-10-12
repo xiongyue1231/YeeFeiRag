@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough, RunnableBranch
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 # from langchain_core.chat_history import BaseChatMessageHistory
@@ -15,6 +15,8 @@ from src.app_config.loder import ConfigLoader
 from src.prompts.templates import get_prompt_template
 from src.core.utils import create_llm_langchain
 from src.rag.hybrid_retriever import HybridRetriever
+from src.agents.router import create_intent_classifier, INTENT_CHAT
+from src.agents.chat_chain import create_chat_chain
 from operator import itemgetter
 from langchain_community.chat_message_histories import RedisChatMessageHistory
 from src.rag.chat_memory import (get_session_history as get_redis_session_history)
@@ -128,7 +130,7 @@ def create_rag_chain(knowledge_id: int):
     print("llm: 初始化完成")
     # 获取配置参数
     llm_max_token = config_manager.config.chat_memory.llm_max_token
-
+    print(f"llm_max_token: {llm_max_token}")
     # 初始化混合检索器
     retriever = HybridRetriever(
         vec_embedding=get_vec_embedding(),
@@ -172,21 +174,11 @@ def create_rag_chain(knowledge_id: int):
             "chat_history": compressed_history
         }
     print("历史对话压缩处理函数完成")
-    # 输入字典需包含：question（原始问题）、chat_history（历史消息列表）
-    chain = (
-            RunnableLambda(process_chat_history)
-            | {
-                "rewritten_query": query_rewriter,  # 改写后的问题，用于检索
-                "input": itemgetter("input"),  # 保留原始问题，可用于回答
-                "chat_history": itemgetter("chat_history"),
-            }
-            | RunnablePassthrough.assign(docs=(lambda x: retriever.invoke(x["rewritten_query"])))
-            | RunnablePassthrough.assign(all_document_str=lambda x: _format_docs(x["docs"]))
-            | prompt
-            | llm
-            | StrOutputParser()
-    )
-    print("构建 RAG 链完成")
+
+    # ---------- 意图路由：闲聊 or 知识检索 ----------
+    intent_classifier = create_intent_classifier()
+    chat_chain = create_chat_chain(llm)
+    print("初始化意图路由完成")
 
     # ---------- 执行阶段调试 ----------
     def _debug_rewriter(input_dict: dict) -> str:
@@ -209,10 +201,9 @@ def create_rag_chain(knowledge_id: int):
         print(f"【链调试】生成回答完成: {answer[:200]}", flush=True)
         return answer
 
-    chain = (
-            RunnableLambda(process_chat_history)
-            | RunnableLambda(lambda x: (print("【链调试】历史处理完成", flush=True), x)[1])
-            | {
+    # RAG 分支：改写 → 检索 → 生成（原链主体）
+    rag_branch = (
+            {
                 "rewritten_query": RunnableLambda(_debug_rewriter),
                 "input": itemgetter("input"),  # 保留原始问题，可用于回答
                 "chat_history": itemgetter("chat_history"),
@@ -224,6 +215,17 @@ def create_rag_chain(knowledge_id: int):
             | llm
             | StrOutputParser()
             | RunnableLambda(_debug_output)
+    )
+
+    # 主链：历史压缩 → 意图分类 → 按意图分发（默认/兜底走 RAG）
+    chain = (
+            RunnableLambda(process_chat_history)
+            | RunnableLambda(lambda x: (print("【链调试】历史处理完成", flush=True), x)[1])
+            | intent_classifier
+            | RunnableBranch(
+                (lambda x: x.get("intent") == INTENT_CHAT, chat_chain),  # 闲聊：跳过检索
+                rag_branch,  # 知识检索 / 分类失败兜底
+            )
     )
     return chain
 
