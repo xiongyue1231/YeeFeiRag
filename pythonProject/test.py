@@ -1,11 +1,94 @@
-
-import torch; print(torch.cuda.is_available())
+#import torch; print(torch.cuda.is_available())
 #
 # #模型下载
 # from modelscope import snapshot_download
 # model_dir = snapshot_download('PaddlePaddle/PaddleOCR-VL-1.5',cache_dir='./models/PaddlePaddle/PaddleOCR-VL-1.5')
+# from modelscope import snapshot_download
+# model_dir = snapshot_download('convaiinnovations/laya',cache_dir='./models/convaiinnovations/laya')
 
+#模型下载
+from modelscope import snapshot_download
+model_dir = snapshot_download('Qwen/Qwen2.5-1.5B-Instruct',cache_dir='src/models')
+# from  import NeoHorseGGUF
 #
+# # 加载模型
+# model = NeoHorseGGUF("NeoHorse-Jev-4B-Q4_K_M.gguf")
+#
+# # 构造一个决策请求 (Choice 类型示例)
+# request = {
+#     "state": "用户想要预订航班，但预算有限。",
+#     "questions": {
+#         "flight_class": {
+#             "type": "choice",
+#             "instructions": "选择最合适的舱位等级。",
+#             "criteria": {
+#                 "economy": "最经济实惠的选择。",
+#                 "business": "提供更多舒适度和灵活性。",
+#                 "first": "最豪华的体验。"
+#             }
+#         }
+#     }
+# }
+#
+# # 获取决策结果
+# result = model.predict(request)
+# print(result)
+#
+# # 关闭模型
+# model.close()
+
+# import os
+#
+# os.environ.setdefault("USE_TF", "0")
+# import laya
+#
+# # 从本地加载模型
+# agent = laya.load("src/models/convaiinnovations/laya/convaiinnovations/laya")
+#
+# # 1. 定义状态
+# state = "帮我检索会议内容"
+#
+# # 2. 定义类型化问题
+# questions = {
+#     "needs_rag": {
+#         "type": "choice",
+#         "instructions": (
+#             "判断该问题是否需要检索外部资料。"
+#             "只要请求中出现'检索/查询/查一下/找一下/搜一下/这周的会议/会议记录/文档/资料'等，"
+#             "一律走 rag。"
+#         ),
+#         "criteria": {
+#             "rag": "凡是要查知识库/文档/会议记录/邮件/工单/历史数据，或出现'检索、查询、查、找、搜'等动词的请求，都走 rag",
+#             "chat": "仅限纯闲聊、问候、情感交流；不涉及任何具体资料查询"
+#
+#         }
+#     }
+# }
+#
+# result = agent.predict(state, questions)
+# print(result)
+# ans = result["answers"]["needs_rag"]
+#
+# decision = ans["choice"]
+# rag_prob = ans["probabilities"]["rag"]
+# confidence = ans["confidence"]
+#
+# RAG_HINTS = ["检索", "查询", "查一下", "找一下", "搜一下",
+#              "会议记录", "文档", "资料", "邮件", "工单"]
+#
+# # 规则：命中关键词 → 强制 rag；或模型不确定(prob接近0.5)时也偏向 rag
+# if any(k in state for k in RAG_HINTS):
+#     decision = "rag"
+# elif confidence < 0.1 and rag_prob > 0.4:
+#     decision = "rag"   # 模型没把握时，倾向需要检索的一侧
+#
+# print(decision)  # -> "rag"
+# 4. 提取结果
+# print(answers["department"]["choice"])  # -> billing
+# print(answers["department"]["confidence"]) # -> 0.94 (置信度)
+# print(answers["urgency"]["score"])        # -> 1.84 / 2.0
+# print(answers["churn_risk"]["noul"])     # -> 0.892 (89.2% 概率)
+
 # from paddleocr import PaddleOCR
 #
 # # 首次运行会自动下载模型（约 100MB）
@@ -82,7 +165,6 @@ import torch; print(torch.cuda.is_available())
 # model_dir = snapshot_download('Wan-AI/Wan2.1-T2V-1.3B-Diffusers', local_dir='src/models/Wan-AI/Wan2.1-T2V-1.3B-Diffusers')
 
 # model_dir = snapshot_download('Wan-AI/Wan2.2-TI2V-5B-Diffusers', local_dir='src/models/Wan-AI/Wan2.2-TI2V-5B-Diffusers')
-
 
 
 #
