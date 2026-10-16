@@ -7,7 +7,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from pathlib import Path
 from src.app_config.loder import ConfigLoader
 from langchain_openai import ChatOpenAI
-
+from langchain_docling.loader import DoclingLoader
 config_manager = ConfigLoader()
 
 
@@ -31,26 +31,18 @@ def _resolve_llm_params(config: RagConfig) -> Dict[str, Any]:
     raise ValueError(f"不支持的 LLM 提供商: {config.provider}")
 
 
-def create_llm_client(config: RagConfig) -> OpenAI:
-    """创建原生 OpenAI SDK 客户端"""
-    params = _resolve_llm_params(config)
-    return OpenAI(
-        api_key=params["api_key"],
-        base_url=params["base_url"],
-    )
-
-
 def create_llm_langchain(config: RagConfig) -> ChatOpenAI:
     """创建 LangChain ChatOpenAI 客户端"""
     params = _resolve_llm_params(config)
     return ChatOpenAI(
         model=params["model"],
-        temperature=0.8,
+        temperature=config.temperature,
         top_p=0.5,
         api_key=params["api_key"],
         base_url=params["base_url"],
-        timeout=60,            # 单次请求超时 60s，避免 vLLM 冷加载时无限等待
-        max_retries=0,         # 失败不重试，避免掩盖问题
+        # vLLM 冷启动 / 长回答很容易超过 60s，默认放宽到 180s（可用环境变量覆盖）
+        timeout=float(os.environ.get("LLM_TIMEOUT", "180")),
+        max_retries=int(os.environ.get("LLM_MAX_RETRIES", "1")),
     )
 
 
@@ -73,7 +65,7 @@ def load_rerank_model(model_name: str, model_path: str) -> EMBEDDING_MODEL_PARAM
     if not os.path.exists(model_path):
         raise FileNotFoundError(
             f"[load_rerank_model] 本地 rerank 模型路径不存在: {model_path}\n"
-            f"请把 BAAI/bge-reranker-base 下载到该目录，或修改 config.yaml 的 local_url"
+            f"请把 BAAI/bge-reranker-base 下载到该目录，或修改 src/app_config/models.py 的 local_url"
         )
 
     print(f"[load_rerank_model] loading: {model_path}", flush=True)

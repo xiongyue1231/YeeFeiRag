@@ -1,3 +1,4 @@
+import threading
 from typing import List, Dict, Any, Optional
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough, RunnableBranch
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -25,6 +26,10 @@ import json
 # ---------- 加载配置 ----------
 config_manager = ConfigLoader()
 device = config_manager.config.deviceSettings.device
+# 链路调试日志开关（来自 chat_memory.console_debug），关闭后请求链路不再刷屏
+DEBUG = bool(getattr(config_manager.config.chat_memory, "console_debug", False))
+# 是否先用 LLM 改写问题再检索（关闭可省一次 LLM 调用，慢环境下显著降低超时率）
+USE_QUERY_REWRITE = bool(getattr(config_manager.config.rag, "use_query_rewrite", True))
 
 
 # ---------- 历史对话压缩工具函数 ----------
@@ -127,10 +132,8 @@ def create_rag_chain(knowledge_id: int):
     """
     # 初始化 LLM 目前设置为 ChatOpenAI方式
     llm = create_llm_langchain(config_manager.config.rag)
-    print("llm: 初始化完成")
     # 获取配置参数
     llm_max_token = config_manager.config.chat_memory.llm_max_token
-    print(f"llm_max_token: {llm_max_token}")
     # 初始化混合检索器
     retriever = HybridRetriever(
         vec_embedding=get_vec_embedding(),
@@ -140,10 +143,8 @@ def create_rag_chain(knowledge_id: int):
         chunk_candidate=config_manager.config.rag.chunk_candidate,
         knowledge_id=knowledge_id,
     )
-    print("初始化检索器完成")
     # 问题改写器（可选：每次对话都先改写用户问题以提升检索效果）
-    query_rewriter = create_query_rewriter(llm)
-    print("初始化问题改写器完成")
+    query_rewriter = create_query_rewriter(llm) if USE_QUERY_REWRITE else None
     # 构建 RAG 提示模板（包含对话历史）
     system_prompt = get_prompt_template("basic_rag")["system"]
     user_template = get_prompt_template("basic_rag")["user"]
@@ -153,7 +154,6 @@ def create_rag_chain(knowledge_id: int):
         MessagesPlaceholder(variable_name="chat_history"),  # 对话历史占位符
         ("user", user_template),
     ])
-    print(f"初始化提示模板完成：{prompt}")
     # 定义链的处理流程
     def _format_docs(docs: List[Document]) -> str:
         return "\n\n".join(doc.page_content for doc in docs)
@@ -173,45 +173,44 @@ def create_rag_chain(knowledge_id: int):
             **input_dict,
             "chat_history": compressed_history
         }
-    print("历史对话压缩处理函数完成")
 
     # ---------- 意图路由：闲聊 or 知识检索 ----------
     intent_classifier = create_intent_classifier()
     chat_chain = create_chat_chain(llm)
-    print("初始化意图路由完成")
 
-    # ---------- 执行阶段调试 ----------
-    def _debug_rewriter(input_dict: dict) -> str:
-        print(f"【链调试】问题改写开始: {input_dict['input']}", flush=True)
+    # ---------- 执行阶段调试（受 DEBUG 开关控制，关掉后请求链路零开销）----------
+    def _get_rewritten_query(input_dict: dict) -> str:
+        """改写用户问题用于检索；未开启改写时直接用原问题"""
+        if query_rewriter is None:
+            return input_dict["input"]
+        if DEBUG:
+            print(f"【链调试】问题改写开始: {input_dict['input']}", flush=True)
         result = query_rewriter.invoke(input_dict)
-        print(f"【链调试】问题改写完成: {result}", flush=True)
+        if DEBUG:
+            print(f"【链调试】问题改写完成: {result}", flush=True)
         return result
 
     def _debug_retrieve(input_dict: dict) -> List[Document]:
-        print(f"【链调试】检索开始", flush=True)
         docs = retriever.invoke(input_dict["rewritten_query"])
-        print(f"【链调试】检索完成，命中 {len(docs)} 条文档", flush=True)
+        if DEBUG:
+            print(f"【链调试】检索完成，命中 {len(docs)} 条文档", flush=True)
         return docs
 
-    def _debug_prompt(messages):
-        print(f"【链调试】生成回答开始，提示词长度: {len(str(messages))}", flush=True)
-        return messages
-
     def _debug_output(answer: str) -> str:
-        print(f"【链调试】生成回答完成: {answer[:200]}", flush=True)
+        if DEBUG:
+            print(f"【链调试】生成回答完成: {answer[:200]}", flush=True)
         return answer
 
     # RAG 分支：改写 → 检索 → 生成（原链主体）
     rag_branch = (
             {
-                "rewritten_query": RunnableLambda(_debug_rewriter),
+                "rewritten_query": RunnableLambda(_get_rewritten_query),
                 "input": itemgetter("input"),  # 保留原始问题，可用于回答
                 "chat_history": itemgetter("chat_history"),
             }
             | RunnablePassthrough.assign(docs=_debug_retrieve)
             | RunnablePassthrough.assign(all_document_str=lambda x: _format_docs(x["docs"]))
             | prompt
-            | RunnableLambda(_debug_prompt)
             | llm
             | StrOutputParser()
             | RunnableLambda(_debug_output)
@@ -220,7 +219,6 @@ def create_rag_chain(knowledge_id: int):
     # 主链：历史压缩 → 意图分类 → 按意图分发（默认/兜底走 RAG）
     chain = (
             RunnableLambda(process_chat_history)
-            | RunnableLambda(lambda x: (print("【链调试】历史处理完成", flush=True), x)[1])
             | intent_classifier
             | RunnableBranch(
                 (lambda x: x.get("intent") == INTENT_CHAT, chat_chain),  # 闲聊：跳过检索
@@ -230,24 +228,40 @@ def create_rag_chain(knowledge_id: int):
     return chain
 
 
+# 按知识库缓存对话链：每个请求新建链会重复构造 LLM 客户端/检索器/意图路由，
+# 每次都要重新加载 1.5B 意图模型，直接把请求拖到超时
+_chain_cache: Dict[int, Any] = {}
+_chain_lock = threading.Lock()
+
+
 def create_conversational_rag(knowledge_id: int):
     """
     返回带消息历史的对话 RAG 实例，可直接调用 .invoke() 进行多轮对话。
+    同一 knowledge_id 复用同一条链（进程内缓存）。
+
     Args:
         knowledge_id: 知识库 ID
-        ttl: Redis 会话过期时间（秒），默认 3600
     """
-    rag_chain = create_rag_chain(knowledge_id)
+    cached = _chain_cache.get(knowledge_id)
+    if cached is not None:
+        return cached
 
-    conversational_rag = RunnableWithMessageHistory(
-        rag_chain,
-        get_redis_session_history,
-        input_messages_key="input",  # 输入中的用户问题键名
-        history_messages_key="chat_history",
-        output_messages_key="output",  # 输出回答的键名
-    )
+    with _chain_lock:
+        cached = _chain_cache.get(knowledge_id)
+        if cached is not None:
+            return cached
 
-    return conversational_rag
+        rag_chain = create_rag_chain(knowledge_id)
+        conversational_rag = RunnableWithMessageHistory(
+            rag_chain,
+            get_redis_session_history,
+            input_messages_key="input",  # 输入中的用户问题键名
+            history_messages_key="chat_history",
+            output_messages_key="output",  # 输出回答的键名
+        )
+        _chain_cache[knowledge_id] = conversational_rag
+        print(f"[rag_chain] 对话链已构建并缓存: kb={knowledge_id}", flush=True)
+        return conversational_rag
 
 
 # # ---------- 使用示例 ----------

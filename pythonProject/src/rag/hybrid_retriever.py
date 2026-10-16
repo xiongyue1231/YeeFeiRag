@@ -3,7 +3,7 @@ from langchain_core.documents import Document
 from src.embed.embedding import VecEmbedding
 from src.database.milvus import MilvusManager
 from src.app_config.loder import ConfigLoader
-from src.core.utils import create_llm_client, load_rerank_model
+from src.core.utils import load_rerank_model
 from typing import List
 import numpy as np
 import torch
@@ -37,11 +37,12 @@ class HybridRetriever(BaseRetriever):
     #     arbitrary_types_allowed = True
 
     def _get_relevant_documents(self, query: str) -> List[Document]:
-        # 获取知识库对应的 collection 名称
+        # 获取知识库对应的 collection 名称（注意用 with 关闭 Session，避免连接泄漏）
         from src.database.orm import Session, KnowledgeDatabase
-        knowledge_record = Session().query(KnowledgeDatabase).filter(
-            KnowledgeDatabase.knowledge_id == self.knowledge_id
-        ).first()
+        with Session() as db_session:
+            knowledge_record = db_session.query(KnowledgeDatabase).filter(
+                KnowledgeDatabase.knowledge_id == self.knowledge_id
+            ).first()
         if not knowledge_record:
             return []
 

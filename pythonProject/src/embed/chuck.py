@@ -1,138 +1,140 @@
 import re
 from typing import List, Dict
+
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+# 注意：本模块不要直接用 HuggingFaceEmbeddings，向量统一走 get_vec_embedding()，
+# 由 VecEmbedding 统一维护 BGE 的 query/文档前缀规则，避免入库与检索规则不一致
 from src.embed.embedding import get_vec_embedding
 from src.app_config.loder import ConfigLoader
-import hashlib
 
 config_manager = ConfigLoader()
 
 
 class OCRChuck:
     def __init__(self):
-        self.cleanSentence = []
+        self.cleanSentence: List[Dict] = []
         self.chunk_size = config_manager.config.rag.chunk_size
         self.chunk_overlap = config_manager.config.rag.chunk_overlap
         self.embedding = get_vec_embedding()
 
-    def clean_sentences(self, sentences: List[str], source: str, source_type: str, source_hash: str, knowledge_id: int,
-                        document_id: int, semantic_chunking: bool = True) -> \
-            List[Dict]:
+        # 防御：overlap 必须小于 chunk_size，否则切分会异常
+        if self.chunk_overlap >= self.chunk_size:
+            raise ValueError(
+                f"chunk_overlap({self.chunk_overlap}) 必须小于 chunk_size({self.chunk_size})"
+            )
+
+        # 中文优先的分隔符，按优先级从大到小
+        self.splitter = RecursiveCharacterTextSplitter(
+            # 文本切分长度
+            chunk_size=self.chunk_size,
+            # 重叠字符   用来避免 一句话被切两半 导致语义丢失
+            chunk_overlap=self.chunk_overlap,
+            # 什么方式计算的文本长度
+            length_function=len,
+            # 保留标点
+            keep_separator=True,
+            # 元数据
+            add_start_index=True,
+            # 分隔符优先级
+            separators=[
+                "\n\n",  # 段落
+                "\n",  # 换行
+                "。", "！", "？", "；",  # 中文句末
+                ".", "!", "?", ";",  # 英文句末
+                "，", "、", ",",  # 句中标点
+                " ",  # 空格
+                "",  # 兜底逐字符
+            ],
+        )
+
+    # ------------------------------------------------------------------ #
+    #  主入口
+    # ------------------------------------------------------------------ #
+    def clean_sentences(
+            self,
+            sentences: List[str],
+            source: str,
+            source_type: str,
+            source_hash: str,
+            knowledge_id: int,
+            document_id: int,
+    ) -> List[Dict]:
+        """
+        sentences: [(text, confidence), ...]
+        返回: 切分 + 向量化后的 chunk 列表
+        """
+        # 1. 归一化 + 过滤，组装 Document
+        docs: List[Document] = []
         for idx, (text, confidence) in enumerate(sentences):
-            cleaned_text = re.sub(r'\s+', '', text)
-            cleaned_text = re.sub(r'[^\w\u4e00-\u9fff]', '', cleaned_text)
-            # 不满足条件的文本跳过
-            if len(cleaned_text) < 2 and confidence < 0.5:  # ← 置信度过滤
+            normalized = self._normalize(text)
+            if not normalized:
+                continue
+            # 太短且置信度低 → 丢弃
+            if len(normalized) < 2 and confidence < 0.5:
                 continue
 
-            # ============ 关键修复：复用 __init__ 加载好的模型实例 ============
-            if len(text) < self.chunk_size:
-                vec = self.embedding.get_embedding(text).tolist()
-                # 短句：直接入库（单句=单chunk）
-                self._add_chunk(idx, source, sentences, text, vec, source_hash, knowledge_id, document_id, source_type)
-            else:
-                # 长句：分块入库
-                chucks = self._split_long_text(text, self.chunk_size, self.chunk_overlap, semantic_chunking)
-                for chunk in chucks:
-                    vec = self.embedding.get_embedding(chunk).tolist()
-                    self._add_chunk(idx, source, sentences, text, vec, source_hash, knowledge_id, document_id, source_type)
+            docs.append(
+                Document(
+                    page_content=normalized,
+                    metadata={
+                        "sentence_index": idx,
+                        "source": str(source),
+                        "source_hash": source_hash,
+                        "knowledge_id": knowledge_id,
+                        "document_id": document_id,
+                        "source_type": source_type,
+                        "total_sentences": len(sentences),
+                    },
+                )
+            )
+
+        # 2. 统一切分（短句也会保留为单 chunk）
+        chunks = self.splitter.split_documents(docs)
+
+        # 3. 向量化 + 组装结果
+        if chunks:
+            texts = [doc.page_content for doc in chunks]
+            # 入库用 embed_documents，不加 query 前缀，且一次 batch 更快
+            vectors = self.embedding.embed_documents(texts)  # List[List[float]]
+
+            for i, (doc, vec) in enumerate(zip(chunks, vectors)):
+                self._add_chunk(i, doc, vec)
 
         return self.cleanSentence
 
-    def _add_chunk(self, idx, source, sentences, text, vec, hash_md5, knowledge_id: int, document_id: int,
-                   source_type="image"):
+    # ------------------------------------------------------------------ #
+    #  内部方法
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def _normalize(text: str) -> str:
+        """只归一化空白，保留标点（切分依赖标点）"""
+        if not text:
+            return ""
+        return re.sub(r"\s+", " ", text).strip()
+
+    def _add_chunk(self, chunk_idx: int, doc: Document, vec: List[float]) -> None:
+        meta = doc.metadata
+        document_id = meta["document_id"]
+        source_type = meta.get("source_type", "image")
+
         data = {
-            "id": f"{document_id}_{source_type}_sent_{idx}",
-            "text": text,  # 原始文本
+            # id 用 document_id + source_type + 句子索引 + chunk 序号，保证唯一
+            "id": f"{document_id}_{source_type}_sent_{meta['sentence_index']}_chunk_{chunk_idx}",
+            "text": doc.page_content,  # ← 修复：存的是 chunk 本身
             "vector": vec,
             "metadata": {
-                "knowledge_id": knowledge_id,
+                "knowledge_id": meta["knowledge_id"],
                 "document_id": document_id,
-                "source_hash": hash_md5,  # 新增：文件md5哈希，用于去重
-                "source": str(source),
-                "sentence_index": int(idx),
+                "source_hash": meta["source_hash"],
+                "source": meta["source"],
+                "sentence_index": int(meta["sentence_index"]),
                 "source_type": source_type,
-                "total_sentences": int(len(sentences)),
-                "chunk_type": "sentence"  # 标记为句子级
-            }
+                "total_sentences": int(meta["total_sentences"]),
+                # split_documents 会带 start_index
+                "start_index": int(meta.get("start_index", 0)),
+                "chunk_index": chunk_idx,
+                "chunk_type": "sentence",
+            },
         }
-
         self.cleanSentence.append(data)
-
-    def _split_long_text(
-            self,
-            text: str,
-            max_size: int,
-            overlap: int,
-            semantic_first: bool
-    ) -> List[str]:
-        """
-        长文本分层切分：
-        1. 先尝试按语义切分（标点）
-        2. 对超长语义段使用滑动窗口
-        """
-        chunks = []
-
-        if semantic_first:
-            # 策略1：按语义标点粗分（保留标点位置）
-            # 使用正向预查，保留分隔符
-            semantic_splits = re.split(r'([。！？；.,?!; \s\n])', text)
-            # 重组：将分隔符拼回前一段
-            segments = []
-            current = ""
-            for i, part in enumerate(semantic_splits):
-                if i % 2 == 0:  # 文本段
-                    current = part
-                else:  # 分隔符
-                    current += part
-                    if len(current) > 10:  # 过滤过短片段
-                        segments.append(current)
-                    current = ""
-
-            if current:
-                segments.append(current)
-
-            # 检查每个语义段长度
-            for seg in segments:
-                if len(seg) <= max_size:
-                    chunks.append(seg.strip())
-                else:
-                    # 语义段仍太长，使用滑动窗口细切
-                    chunks.extend(self._sliding_window(seg, max_size, overlap))
-        else:
-            # 策略2：直接使用滑动窗口（无语义保持）
-            chunks = self._sliding_window(text, max_size, overlap)
-
-        return [c for c in chunks if c.strip()]  # 过滤空串
-
-    def _sliding_window(self, text: str, window_size: int, overlap: int) -> List[str]:
-        """滑动窗口切分，确保上下文连续性"""
-        chunks = []
-        start = 0
-        text_len = len(text)
-
-        while start < text_len:
-            end = min(start + window_size, text_len)
-            chunk = text[start:end]
-
-            # 智能边界：避免在词中间切断（中文按字，英文按词）
-            if end < text_len:
-                # 尝试向后找最近的语义断点（标点或空格）
-                look_ahead = min(20, text_len - end)  # 最多看20字符
-                sub_text = text[end:end + look_ahead]
-
-                # 找第一个标点或空格
-                match = re.search(r'[。，！？；.,?!; \s]', sub_text)
-                if match:
-                    end += match.start() + 1
-
-            chunks.append(text[start:end].strip())
-
-            # 步进：窗口大小 - 重叠
-            start += (window_size - overlap)
-
-        return chunks
-
-# if __name__ == "__main__":
-#     test = """这个就是前面房型融合想更细会出现的问题。目前程序的逻辑是 房型名称及床型，在另外一个房型名称及床型（名称包含、房型一样）就会认为是相同房型，比如：泰迪珍藏君悦豪华大床房 ，君悦豪华大床房 房型名称，按照逻辑
-#     君悦豪华大床房 会被认为是  泰迪珍藏君悦豪华大床房 的相同房型"""
-#     OCRChuck()._split_long_text(test, 20, 4, True)

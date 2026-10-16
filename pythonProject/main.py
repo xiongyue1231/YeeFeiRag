@@ -31,6 +31,10 @@ from src.exceptions import BusinessException, NotFoundException
 # ==================== 初始化 ====================
 config_manager = ConfigLoader()
 
+# 注意：意图模型不在启动阶段预热。该模型在本机（页面文件不足）加载会长时间不返回，
+# 放进 lifespan 会导致 uvicorn 永远停在 "Waiting for application startup"，
+# 改为首次请求时按需加载（并有加载超时 + 失败冷却兜底）。
+
 app = FastAPI(
     title="YeeFei RAG 知识库管理系统",
     description="知识库、文档管理与 RAG 对话接口",
@@ -109,6 +113,25 @@ async def global_exception_handler(request: Request, exc: Exception):
             "data": None,
         },
     )
+
+
+# ==================== 健康检查 ====================
+
+@app.get("/health")
+def health():
+    """健康检查（供网关/前端探测后端是否存活，避免直接拿到 502）"""
+    return {
+        "request_id": _new_request_id(),
+        "status": "ok",
+        "service": "yeefeirag",
+        "provider": config_manager.config.rag.provider,
+        "llm_model": (
+            config_manager.config.rag.vllm_model
+            if config_manager.config.rag.provider == "vllm"
+            else config_manager.config.rag.llm_model
+        ),
+        "processing_time": 0.0,
+    }
 
 
 # ==================== 工具函数 ====================

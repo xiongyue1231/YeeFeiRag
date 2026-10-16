@@ -1,3 +1,26 @@
+import os
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+# 建议将 API Key 放在环境变量中，或者直接在此处赋值（生产环境请勿硬编码）
+# os.environ["DEEPSEEK_API_KEY"] = "sk-你的DeepSeek密钥"
+
+# 初始化模型
+llm = ChatOpenAI(
+    model="qwen3.5-0.8b",             # DeepSeek V4 模型名称
+    openai_api_key="123123123",        # 填入你的 DeepSeek API Key
+    openai_api_base="http://localhost:8000/v1", # DeepSeek 的 API 地址
+    temperature=0.7,
+    max_tokens=1024
+)
+
+
+# 测试一下
+# response = llm.stream("你好，DeepSeek！请做一个简短的自我介绍。")
+# print(response)
+# 流式输出
+for chunk in llm.stream("你好，DeepSeek！请做一个简短的自我介绍。"):
+    print(chunk.content, end="", flush=True)
+
 #import torch; print(torch.cuda.is_available())
 #
 # #模型下载
@@ -6,9 +29,9 @@
 # from modelscope import snapshot_download
 # model_dir = snapshot_download('convaiinnovations/laya',cache_dir='./models/convaiinnovations/laya')
 
-#模型下载
-from modelscope import snapshot_download
-model_dir = snapshot_download('Qwen/Qwen2.5-1.5B-Instruct',cache_dir='src/models')
+# #模型下载
+# from modelscope import snapshot_download
+# model_dir = snapshot_download('Qwen/Qwen2.5-1.5B-Instruct',cache_dir='src/models')
 # from  import NeoHorseGGUF
 #
 # # 加载模型
