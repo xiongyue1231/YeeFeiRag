@@ -273,14 +273,14 @@ def create_conversational_rag(knowledge_id: int):
 #     # 第一轮
 #     response1 = conversational_rag.invoke(
 #         {"input": "如何激活conda环境？"},
-#         config={"configurable": {"session_id": session_id}}
+#         configs={"configurable": {"session_id": session_id}}
 #     )
 #     print("AI:", response1)
 #
 #     # 第二轮，会携带历史上下文
 #     response2 = conversational_rag.invoke(
 #         {"input": "人工智能如何在企业中应用"},
-#         config={"configurable": {"session_id": session_id}}
+#         configs={"configurable": {"session_id": session_id}}
 #     )
 #     print("AI:", response2)
 #

@@ -7,7 +7,6 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from pathlib import Path
 from src.app_config.loder import ConfigLoader
 from langchain_openai import ChatOpenAI
-from langchain_docling.loader import DoclingLoader
 config_manager = ConfigLoader()
 
 

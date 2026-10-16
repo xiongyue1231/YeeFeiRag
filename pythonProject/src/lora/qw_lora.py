@@ -38,7 +38,7 @@ def load_data(path):
 def main():
     print("MODEL_NAME =", MODEL_NAME)
     print("DATA_PATH  =", DATA_PATH)
-    print("模型存在:", os.path.exists(os.path.join(MODEL_NAME, "config.json")))
+    print("模型存在:", os.path.exists(os.path.join(MODEL_NAME, "configs.json")))
     print("数据存在:", os.path.exists(DATA_PATH))
 
     # 1. Tokenizer

@@ -2,7 +2,7 @@
 配置加载器（薄封装）
 
 配置的唯一来源是 src/app_config/models.py 中的 Pydantic 模型默认值，
-本模块不再解析 config.yaml，只负责对外提供进程内唯一的配置实例（兼容旧调用方式）。
+本模块不再解析 configs.yaml，只负责对外提供进程内唯一的配置实例（兼容旧调用方式）。
 """
 from typing import Any, Dict, Optional, Union
 
@@ -55,5 +55,5 @@ class ConfigLoader:
         return self._app_config
 
 
-# 便捷入口：其它模块可直接 `from src.app_config.loder import config` 使用
+# 便捷入口：其它模块可直接 `from src.app_config.loder import configs` 使用
 config: AppConfig = get_config()

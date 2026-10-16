@@ -2,7 +2,7 @@
 应用配置的唯一来源。
 
 所有配置项都以 Pydantic 模型默认值的形式定义在本文件（src/app_config/models.py）中，
-项目内统一通过 get_config() / ConfigLoader 读取，不再解析 config.yaml。
+项目内统一通过 get_config() / ConfigLoader 读取，不再解析 configs.yaml。
 """
 import threading
 from typing import Dict, List, Optional, Literal, Any, Union
